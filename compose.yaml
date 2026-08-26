@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: clutchquant-postgres
+    environment:
+      POSTGRES_DB: clutchquant
+      POSTGRES_USER: clutchquant
+      POSTGRES_PASSWORD: clutchquant_local
+    ports:
+      - "5432:5432"
+    volumes:
+      - clutchquant_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clutchquant -d clutchquant"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  clutchquant_postgres_data:
