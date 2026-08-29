@@ -18,3 +18,5 @@ out/
 .vscode/
 .DS_Store
 Thumbs.db
+# Local ingestion state
+apps/api/app/ingestion/vlr_backfill_checkpoint.txt
