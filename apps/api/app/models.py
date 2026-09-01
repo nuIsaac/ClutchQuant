@@ -1,11 +1,13 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
     String,
     UniqueConstraint,
+    func,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -178,3 +180,88 @@ class PlayerMapStat(Base):
     first_kill_diff_all: Mapped[int | None] = mapped_column()
     first_kill_diff_attack: Mapped[int | None] = mapped_column()
     first_kill_diff_defense: Mapped[int | None] = mapped_column()
+
+
+class Forecast(Base):
+    __tablename__ = "forecasts"
+
+    __table_args__ = (
+        CheckConstraint(
+            "source_type IN ('human', 'model', 'market')",
+            name="ck_forecasts_source_type",
+        ),
+        CheckConstraint(
+            (
+                "team1_win_probability >= 0.0 "
+                "AND team1_win_probability <= 1.0"
+            ),
+            name="ck_forecasts_probability",
+        ),
+        CheckConstraint(
+            "team1_id <> team2_id",
+            name="ck_forecasts_different_teams",
+        ),
+        CheckConstraint(
+            "created_at < lock_time",
+            name="ck_forecasts_before_lock",
+        ),
+        UniqueConstraint(
+            "match_id",
+            "source_key",
+            name="uq_forecasts_match_source",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    match_id: Mapped[int] = mapped_column(
+        ForeignKey("matches.id"),
+        nullable=False,
+        index=True,
+    )
+
+    # Preserve the exact matchup that existed when
+    # the forecast was submitted.
+    team1_id: Mapped[int] = mapped_column(
+        ForeignKey("teams.id"),
+        nullable=False,
+    )
+
+    team2_id: Mapped[int] = mapped_column(
+        ForeignKey("teams.id"),
+        nullable=False,
+    )
+
+    source_type: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
+
+    # Examples: human:isaac or model:elo:v1
+    source_key: Mapped[str] = mapped_column(
+        String(150),
+        nullable=False,
+    )
+
+    team1_win_probability: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+    )
+
+    rationale: Mapped[str | None] = mapped_column(
+        String(1000)
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    # Snapshot of the match start time. This ensures
+    # later schedule changes cannot alter the deadline
+    # that governed an existing forecast.
+    lock_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
