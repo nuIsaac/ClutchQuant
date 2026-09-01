@@ -66,15 +66,37 @@ def parse_triplet(text, converter=float):
 
 
 def parse_duration(text):
-    if not text or ":" not in text:
+    if not text:
         return None
 
-    minutes, seconds = text.split(":", 1)
+    parts = text.strip().split(":")
 
-    return (
-        int(minutes) * 60
-        + int(seconds)
-    )
+    try:
+        values = [
+            int(part)
+            for part in parts
+        ]
+    except ValueError:
+        return None
+
+    if len(values) == 2:
+        minutes, seconds = values
+
+        return (
+            minutes * 60
+            + seconds
+        )
+
+    if len(values) == 3:
+        hours, minutes, seconds = values
+
+        return (
+            hours * 3600
+            + minutes * 60
+            + seconds
+        )
+
+    return None
 
 
 def parse_player_row(row, team_number):
