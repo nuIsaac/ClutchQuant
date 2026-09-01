@@ -64,3 +64,26 @@ class ForecastResponse(BaseModel):
 
     created_at: datetime
     lock_time: datetime
+
+
+
+class ForecastScoreResponse(BaseModel):
+    forecast_id: int
+    match_id: int
+
+    source_type: str
+    source_key: str
+
+    team1_id: int
+    team1_name: str
+    team2_id: int
+    team2_name: str
+
+    team1_win_probability: float
+
+    team1_score: int
+    team2_score: int
+    team1_outcome: int
+
+    brier_score: float
+    log_loss: float

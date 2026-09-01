@@ -194,3 +194,59 @@ def test_forecast_rejects_completed_match(
     )
 
     assert response.status_code == 409
+
+
+def test_scores_completed_forecast(
+    client,
+    database,
+    scheduled_match,
+):
+    created = client.post(
+        "/api/v1/forecasts",
+        json={
+            "match_id": scheduled_match,
+            "source_type": "human",
+            "source_key": "human:test",
+            "team1_win_probability": 0.65,
+            "rationale": "Test forecast.",
+        },
+    )
+
+    assert created.status_code == 201
+
+    db = database()
+
+    match = db.get(
+        Match,
+        scheduled_match,
+    )
+
+    match.status = "completed"
+    match.team1_score = 2
+    match.team2_score = 1
+
+    db.commit()
+    db.close()
+
+    response = client.get(
+        "/api/v1/forecasts/scores",
+        params={
+            "match_id": scheduled_match,
+        },
+    )
+
+    assert response.status_code == 200
+
+    scores = response.json()
+
+    assert len(scores) == 1
+
+    score = scores[0]
+
+    assert score["team1_outcome"] == 1
+    assert score["brier_score"] == pytest.approx(
+        0.1225
+    )
+    assert score["log_loss"] == pytest.approx(
+        0.4307829
+    )

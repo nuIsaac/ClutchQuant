@@ -9,15 +9,20 @@ from fastapi import (
     status,
 )
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.dependencies import get_db
-from app.models import Forecast, Match
+from app.models import Forecast, Match, Team
 from app.schemas import (
     ForecastCreate,
     ForecastResponse,
+    ForecastScoreResponse,
 )
-
+from app.scoring import (
+    calculate_brier_score,
+    calculate_log_loss,
+    resolve_team1_outcome,
+)
 
 router = APIRouter(
     prefix="/api/v1/forecasts",
@@ -137,3 +142,109 @@ def list_forecasts(
         .order_by(Forecast.created_at.desc())
         .all()
     )
+
+    responses: list[ForecastScoreResponse] = []
+
+@router.get(
+    "/scores",
+    response_model=list[ForecastScoreResponse],
+)
+def list_scored_forecasts(
+    db: DatabaseSession,
+    match_id: int | None = Query(
+        default=None,
+        gt=0,
+    ),
+    source_key: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=150,
+    ),
+) -> list[ForecastScoreResponse]:
+    team1 = aliased(Team)
+    team2 = aliased(Team)
+
+    query = (
+        db.query(
+            Forecast,
+            Match,
+            team1.name.label("team1_name"),
+            team2.name.label("team2_name"),
+        )
+        .join(
+            Match,
+            Match.id == Forecast.match_id,
+        )
+        .join(
+            team1,
+            team1.id == Forecast.team1_id,
+        )
+        .join(
+            team2,
+            team2.id == Forecast.team2_id,
+        )
+        .filter(
+            Match.status == "completed",
+            Match.team1_score.is_not(None),
+            Match.team2_score.is_not(None),
+            Match.team1_score != Match.team2_score,
+        )
+    )
+
+    if match_id is not None:
+        query = query.filter(
+            Forecast.match_id == match_id
+        )
+
+    if source_key is not None:
+        query = query.filter(
+            Forecast.source_key == source_key
+        )
+
+    rows = (
+        query
+        .order_by(Forecast.created_at.desc())
+        .all()
+    )
+
+    responses = []
+
+    for (
+        forecast,
+        match,
+        team1_name,
+        team2_name,
+    ) in rows:
+        outcome = resolve_team1_outcome(
+            match.team1_score,
+            match.team2_score,
+        )
+
+        responses.append(
+            ForecastScoreResponse(
+                forecast_id=forecast.id,
+                match_id=forecast.match_id,
+                source_type=forecast.source_type,
+                source_key=forecast.source_key,
+                team1_id=forecast.team1_id,
+                team1_name=team1_name,
+                team2_id=forecast.team2_id,
+                team2_name=team2_name,
+                team1_win_probability=(
+                    forecast.team1_win_probability
+                ),
+                team1_score=match.team1_score,
+                team2_score=match.team2_score,
+                team1_outcome=outcome,
+                brier_score=calculate_brier_score(
+                    forecast.team1_win_probability,
+                    outcome,
+                ),
+                log_loss=calculate_log_loss(
+                    forecast.team1_win_probability,
+                    outcome,
+                ),
+            )
+        )
+
+    return responses
