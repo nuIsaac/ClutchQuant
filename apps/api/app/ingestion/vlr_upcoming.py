@@ -1,4 +1,5 @@
 import time
+from datetime import datetime, timezone
 
 import httpx
 
@@ -49,6 +50,10 @@ def parse_upcoming_match(client, match_card):
             "The start time is not known yet."
         )
 
+    if (data["scheduled_at"] <= datetime.now(timezone.utc)
+            or data["team1_score"] is not None or data["team2_score"] is not None):
+        raise MatchNotForecastableError("Match may have started or already has scores.")
+
     data["team1_score"] = None
     data["team2_score"] = None
     data["status"] = "scheduled"
@@ -56,7 +61,9 @@ def parse_upcoming_match(client, match_card):
     return data
 
 
-def sync_upcoming_matches():
+def sync_upcoming_matches(max_pages=2):
+    if not 1 <= max_pages <= 10:
+        raise ValueError("max_pages must be between 1 and 10")
     headers = {
         "User-Agent": "Mozilla/5.0"
     }
@@ -76,7 +83,7 @@ def sync_upcoming_matches():
 
             page = 1
 
-            while True:
+            while page <= max_pages:
                 print()
                 print("=" * 60)
                 print(f"UPCOMING PAGE {page}")
@@ -197,6 +204,7 @@ def sync_upcoming_matches():
 
         print()
         print("Upcoming-match sync stopped.")
+        raise
 
     finally:
         db.close()
@@ -208,6 +216,7 @@ def sync_upcoming_matches():
     print("Matches synced:", total_synced)
     print("Not forecastable:", total_skipped)
     print("Failed:", total_failed)
+    return {"saved": total_synced, "skipped": total_skipped, "failed": total_failed}
 
 
 def main():

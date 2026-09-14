@@ -1,12 +1,12 @@
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session, aliased
 
 from app.dependencies import get_db
-from app.models import Match, Team
-from app.schemas import UpcomingMatchResponse
+from app.models import Forecast, Match, Team
+from app.schemas import UpcomingMatchResponse, UpcomingForecastResponse, ForecastResponse
 
 
 router = APIRouter(
@@ -26,6 +26,7 @@ DatabaseSession = Annotated[
 )
 def list_upcoming_matches(
     db: DatabaseSession,
+    limit: int = Query(default=100, ge=1, le=500),
 ) -> list[UpcomingMatchResponse]:
     now = datetime.now(timezone.utc)
 
@@ -52,6 +53,7 @@ def list_upcoming_matches(
             Match.scheduled_at > now,
         )
         .order_by(Match.scheduled_at.asc())
+        .limit(limit)
         .all()
     )
 
@@ -70,3 +72,13 @@ def list_upcoming_matches(
         )
         for match, team1_name, team2_name in rows
     ]
+
+
+@router.get("/upcoming/forecasts", response_model=list[UpcomingForecastResponse])
+def upcoming_forecasts(db: DatabaseSession, limit: int = Query(default=100,ge=1,le=500)):
+    matches = list_upcoming_matches(db,limit=limit)
+    grouped = {match.id:[] for match in matches}
+    if grouped:
+        for forecast in db.query(Forecast).filter(Forecast.match_id.in_(grouped)).order_by(Forecast.source_key):
+            grouped[forecast.match_id].append(ForecastResponse.model_validate(forecast))
+    return [UpcomingForecastResponse(**match.model_dump(),forecasts=grouped[match.id]) for match in matches]

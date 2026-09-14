@@ -23,15 +23,14 @@ class UpcomingMatchResponse(BaseModel):
 class ForecastCreate(BaseModel):
     match_id: int
 
-    source_type: Literal[
-        "human",
-        "model",
-        "market",
-    ]
+    # Internal model/market jobs write directly; public submissions cannot
+    # claim those namespaces. Human identity authentication is separate work.
+    source_type: Literal["human"]
 
     source_key: str = Field(
         min_length=1,
         max_length=150,
+        pattern=r"^human:[A-Za-z0-9][A-Za-z0-9_.:-]*$",
     )
 
     team1_win_probability: float = Field(
@@ -51,6 +50,7 @@ class ForecastResponse(BaseModel):
     )
 
     id: int
+    model_run_id: str | None = None
     match_id: int
 
     team1_id: int
@@ -87,3 +87,7 @@ class ForecastScoreResponse(BaseModel):
 
     brier_score: float
     log_loss: float
+
+
+class UpcomingForecastResponse(UpcomingMatchResponse):
+    forecasts: list[ForecastResponse]

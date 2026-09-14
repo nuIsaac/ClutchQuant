@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -16,12 +16,12 @@ def make_match_data():
             "vlr_id": 2,
             "name": "Team Two",
         },
-        "team1_score": 2,
-        "team2_score": 1,
+        "team1_score": None,
+        "team2_score": None,
         "event_name": "Test Event",
         "stage": "Playoffs",
         "status": "completed",
-        "scheduled_at": datetime.now(timezone.utc),
+        "scheduled_at": datetime.now(timezone.utc)+timedelta(hours=1),
     }
 
 
@@ -86,3 +86,12 @@ def test_parse_upcoming_match_rejects_unknown_time(
             None,
             None,
         )
+
+
+@pytest.mark.parametrize("change",[{"team1_score":0},{"team2_score":1},
+    {"scheduled_at":datetime(2020,1,1,tzinfo=timezone.utc)}])
+def test_started_match_is_never_reclassified_as_upcoming(monkeypatch,change):
+    data = make_match_data() | change
+    monkeypatch.setattr(vlr_upcoming,"parse_completed_match",lambda *_:data)
+    with pytest.raises(vlr_upcoming.MatchNotForecastableError):
+        vlr_upcoming.parse_upcoming_match(None,None)

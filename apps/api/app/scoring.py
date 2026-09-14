@@ -10,6 +10,9 @@ def resolve_team1_outcome(
             "Both match scores are required."
         )
 
+    if team1_score < 0 or team2_score < 0:
+        raise ValueError("Match scores cannot be negative.")
+
     if team1_score == team2_score:
         raise ValueError(
             "A completed Valorant match cannot be tied."

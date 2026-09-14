@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import secrets
 from typing import Annotated
 
 from fastapi import (
@@ -6,12 +7,16 @@ from fastapi import (
     Depends,
     HTTPException,
     Query,
+    Header,
     status,
 )
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session, aliased
 
 from app.dependencies import get_db
+from app import settings
+from app.match_eligibility import match_exclusion_reason
 from app.models import Forecast, Match, Team
 from app.schemas import (
     ForecastCreate,
@@ -43,7 +48,16 @@ DatabaseSession = Annotated[
 def create_forecast(
     payload: ForecastCreate,
     db: DatabaseSession,
+    authorization: str | None = Header(default=None),
 ) -> Forecast:
+    # Public deployments are read-only unless the operator configures a token.
+    # This is an operator gate, not a multi-user identity system.
+    if settings.APP_ENV != "development":
+        if not settings.HUMAN_FORECAST_TOKEN:
+            raise HTTPException(status_code=403,detail="Forecast submission is disabled.")
+        expected = f"Bearer {settings.HUMAN_FORECAST_TOKEN}"
+        if not authorization or not secrets.compare_digest(authorization,expected):
+            raise HTTPException(status_code=401,detail="Valid operator authorization required.")
     match = db.get(
         Match,
         payload.match_id,
@@ -58,6 +72,7 @@ def create_forecast(
     if (
         match.status != "scheduled"
         or match.scheduled_at is None
+        or match.team1_id == match.team2_id
     ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -95,6 +110,7 @@ def create_forecast(
             payload.team1_win_probability
         ),
         rationale=payload.rationale,
+        created_at=now,
         lock_time=lock_time,
     )
 
@@ -109,8 +125,8 @@ def create_forecast(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
-                "A forecast from this source "
-                "already exists for this match."
+                "The forecast conflicts with an existing forecast "
+                "or a database integrity constraint."
             ),
         ) from error
 
@@ -129,6 +145,9 @@ def list_forecasts(
         default=None,
         gt=0,
     ),
+    source_key: str | None = Query(default=None,max_length=150),
+    limit: int = Query(default=200,ge=1,le=500),
+    offset: int = Query(default=0,ge=0),
 ) -> list[Forecast]:
     query = db.query(Forecast)
 
@@ -136,14 +155,15 @@ def list_forecasts(
         query = query.filter(
             Forecast.match_id == match_id
         )
+    if source_key is not None:
+        query = query.filter(Forecast.source_key == source_key)
 
     return (
         query
         .order_by(Forecast.created_at.desc())
+        .offset(offset).limit(limit)
         .all()
     )
-
-    responses: list[ForecastScoreResponse] = []
 
 @router.get(
     "/scores",
@@ -160,6 +180,8 @@ def list_scored_forecasts(
         min_length=1,
         max_length=150,
     ),
+    limit: int = Query(default=200,ge=1,le=500),
+    offset: int = Query(default=0,ge=0),
 ) -> list[ForecastScoreResponse]:
     team1 = aliased(Team)
     team2 = aliased(Team)
@@ -184,10 +206,11 @@ def list_scored_forecasts(
             team2.id == Forecast.team2_id,
         )
         .filter(
-            Match.status == "completed",
-            Match.team1_score.is_not(None),
-            Match.team2_score.is_not(None),
-            Match.team1_score != Match.team2_score,
+            match_exclusion_reason().is_(None),
+            or_(
+                and_(Forecast.team1_id == Match.team1_id, Forecast.team2_id == Match.team2_id),
+                and_(Forecast.team1_id == Match.team2_id, Forecast.team2_id == Match.team1_id),
+            ),
         )
     )
 
@@ -204,6 +227,7 @@ def list_scored_forecasts(
     rows = (
         query
         .order_by(Forecast.created_at.desc())
+        .offset(offset).limit(limit)
         .all()
     )
 
@@ -215,9 +239,20 @@ def list_scored_forecasts(
         team1_name,
         team2_name,
     ) in rows:
+        # Scores and probabilities in this response always follow the
+        # forecast snapshot, even if ingestion later reverses team order.
+        if (forecast.team1_id, forecast.team2_id) == (match.team1_id, match.team2_id):
+            team1_score, team2_score = match.team1_score, match.team2_score
+        elif (forecast.team1_id, forecast.team2_id) == (match.team2_id, match.team1_id):
+            team1_score, team2_score = match.team2_score, match.team1_score
+        else:
+            # A replacement opponent makes this a different prediction task.
+            # Keep the forecast in storage and the unscored listing.
+            continue
+
         outcome = resolve_team1_outcome(
-            match.team1_score,
-            match.team2_score,
+            team1_score,
+            team2_score,
         )
 
         responses.append(
@@ -233,8 +268,8 @@ def list_scored_forecasts(
                 team1_win_probability=(
                     forecast.team1_win_probability
                 ),
-                team1_score=match.team1_score,
-                team2_score=match.team2_score,
+                team1_score=team1_score,
+                team2_score=team2_score,
                 team1_outcome=outcome,
                 brier_score=calculate_brier_score(
                     forecast.team1_win_probability,

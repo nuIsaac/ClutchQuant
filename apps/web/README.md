@@ -20,6 +20,14 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Validation
+
+Run `npm test`, `npm run lint`, and `npm run build` from this directory.
+The dependency-free forecast display tests use Node's built-in TypeScript support
+and require Node.js 22.18 or newer. They verify that forecasts follow team
+identities when the match order changes, and that changed or unknown participants
+never inherit a stale probability or rationale.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

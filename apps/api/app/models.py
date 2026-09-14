@@ -4,6 +4,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     Float,
+    JSON,
     ForeignKey,
     String,
     UniqueConstraint,
@@ -24,7 +25,6 @@ class Team(Base):
 
     name: Mapped[str] = mapped_column(
         String(100),
-        unique=True,
         nullable=False,
     )
 
@@ -214,6 +214,8 @@ class Forecast(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
+    model_run_id: Mapped[str | None] = mapped_column(ForeignKey("model_runs.id"))
+
     match_id: Mapped[int] = mapped_column(
         ForeignKey("matches.id"),
         nullable=False,
@@ -265,3 +267,38 @@ class Forecast(Base):
         DateTime(timezone=True),
         nullable=False,
     )
+
+
+class MatchObservation(Base):
+    __tablename__ = "match_observations"
+    __table_args__ = (UniqueConstraint("evidence_key",name="uq_match_observations_evidence_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"), index=True)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    raw_sha256: Mapped[str] = mapped_column(String(64))
+    source_url: Mapped[str] = mapped_column(String(1000))
+    payload: Mapped[dict] = mapped_column(JSON)
+    evidence_key: Mapped[str | None] = mapped_column(String(64))
+
+
+class PipelineRun(Base):
+    __tablename__ = "pipeline_runs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(20))
+    report_sha256: Mapped[str | None] = mapped_column(String(64))
+    details: Mapped[dict] = mapped_column(JSON)
+
+
+class ModelRun(Base):
+    __tablename__ = "model_runs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    source_key: Mapped[str] = mapped_column(String(150))
+    dataset_sha256: Mapped[str] = mapped_column(String(64))
+    configuration: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

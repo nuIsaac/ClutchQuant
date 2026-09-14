@@ -12,6 +12,29 @@ ClutchQuant evaluates that question by recording human and model predictions bef
 
 ## Core capabilities
 
+The list below describes the product direction, not a list of completed features.
+Currently implemented: VLR match/map/player-stat ingestion, upcoming-match sync,
+PostgreSQL storage and migrations, human forecast submission, persisted Elo v1
+forecasts, per-forecast scoring, and a Next.js upcoming-match dashboard.
+
+Also implemented: content-addressed raw/dataset/report snapshots, observation-time
+replay, calibration reports, experimental Elo decay candidates, logistic regression,
+gradient boosting, guarded ensemble evaluation, model-run provenance, and a
+multi-model dashboard. A recurring prospective pipeline now captures fresh source
+observations, freezes actual forecasts, and scores them separately from diagnostics.
+Strict evaluation of the original backfill remains **BLOCKED** by missing original
+availability evidence; prospective outcomes must accumulate over time.
+No experimental model or ensemble has been promoted. Roster history, market
+comparisons, and public deployment remain future work. Elo v1 remains frozen.
+
+See the [operating and deployment runbook](docs/runbook.md),
+[evaluation decision](docs/decisions/002-observation-time-research.md), and
+[implementation report](docs/implementation-report.md) for commands and measured results.
+
+See [the data and forecast correctness decision](docs/decisions/001-data-and-forecast-correctness.md)
+for implemented rules, known evaluation limits, the required migration, and test
+commands.
+
 - Ingest match, map, team, player, roster, event, and performance data
 - Resolve inconsistent team and player identities across historical records
 - Build matchup-level features from recent form, map pools, roster changes, and opponent strength

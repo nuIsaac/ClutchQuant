@@ -13,6 +13,7 @@ out/
 .env
 .env.local
 .env.*.local
+!.env.example
 
 # Editors and operating systems
 .vscode/
@@ -20,3 +21,4 @@ out/
 Thumbs.db
 # Local ingestion state
 apps/api/app/ingestion/vlr_backfill_checkpoint.txt
+apps/api/artifacts/

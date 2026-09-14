@@ -2,6 +2,7 @@ import re
 
 import httpx
 from bs4 import BeautifulSoup
+from app.ingestion.provenance import captured_soup
 
 from app.database import SessionLocal
 from app.models import (
@@ -28,12 +29,10 @@ def fetch_page(url):
         follow_redirects=True,
     )
 
+    soup = captured_soup(response)
     response.raise_for_status()
 
-    return BeautifulSoup(
-        response.text,
-        "html.parser",
-    )
+    return soup
 
 
 def extract_vlr_id(href):
@@ -352,32 +351,43 @@ def parse_maps(soup):
 
 
 def get_or_create_player(db, player_data):
+    """Resolve a player only from a known VLR identity.
+
+    A missing ID must never match an existing null-ID player. Reject the
+    row before querying or mutating the session so the ingestion caller can
+    roll back the match transaction and preserve existing unknown records.
+    """
+    vlr_player_id = player_data.get("vlr_player_id")
+    player_name = player_data.get("player_name")
+
+    if type(vlr_player_id) is not int or vlr_player_id <= 0:
+        raise ValueError("A positive integer VLR player ID is required.")
+
+    if not isinstance(player_name, str) or not player_name.strip():
+        raise ValueError("A non-empty player name is required.")
+
+    player_name = player_name.strip()
+
     player = (
         db.query(Player)
         .filter(
             Player.vlr_id
-            == player_data["vlr_player_id"]
+            == vlr_player_id
         )
         .first()
     )
 
     if player is None:
         player = Player(
-            vlr_id=player_data[
-                "vlr_player_id"
-            ],
-            handle=player_data[
-                "player_name"
-            ],
+            vlr_id=vlr_player_id,
+            handle=player_name,
         )
 
         db.add(player)
         db.flush()
 
     else:
-        player.handle = player_data[
-            "player_name"
-        ]
+        player.handle = player_name
 
     return player
 

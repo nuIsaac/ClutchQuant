@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 
 from app.database import SessionLocal
+from app.match_eligibility import eligible_matches_query
 from app.models import Forecast, Match
 from app.research.elo import (
     get_team_rating,
@@ -20,18 +21,11 @@ def generate_elo_forecasts() -> None:
 
     created = 0
     skipped = 0
+    training_cutoff = datetime.now(timezone.utc)
 
     with SessionLocal() as db:
         completed_matches = db.scalars(
-            select(Match)
-            .where(
-                Match.status == "completed",
-                Match.team1_score.is_not(None),
-                Match.team2_score.is_not(None),
-                Match.team1_score != Match.team2_score,
-                Match.scheduled_at.is_not(None),
-            )
-            .order_by(Match.scheduled_at.asc())
+            eligible_matches_query().where(Match.scheduled_at < training_cutoff)
         ).all()
 
         # Build current ratings using only completed historical matches.
@@ -68,6 +62,7 @@ def generate_elo_forecasts() -> None:
                 Match.status == "scheduled",
                 Match.scheduled_at.is_not(None),
                 Match.scheduled_at > now,
+                Match.team1_id != Match.team2_id,
             )
             .order_by(Match.scheduled_at.asc())
         ).all()
@@ -100,6 +95,16 @@ def generate_elo_forecasts() -> None:
                 match.team2_id,
             )
 
+            # Lookups and computation can cross a deadline. Timestamp the
+            # completed prediction, not the start of the loop/transaction.
+            forecast_time = datetime.now(timezone.utc)
+            lock_time = match.scheduled_at
+            if lock_time.tzinfo is None:
+                lock_time = lock_time.replace(tzinfo=timezone.utc)
+            if forecast_time >= lock_time:
+                skipped += 1
+                continue
+
             forecast = Forecast(
                 match_id=match.id,
                 team1_id=match.team1_id,
@@ -111,7 +116,8 @@ def generate_elo_forecasts() -> None:
                     f"Elo v1 ratings: "
                     f"{team1_rating:.1f} vs {team2_rating:.1f}"
                 ),
-                lock_time=match.scheduled_at,
+                created_at=forecast_time,
+                lock_time=lock_time,
             )
 
             db.add(forecast)
@@ -120,7 +126,7 @@ def generate_elo_forecasts() -> None:
         db.commit()
 
     print(f"Forecasts created: {created}")
-    print(f"Existing forecasts skipped: {skipped}")
+    print(f"Forecasts skipped (existing or past deadline): {skipped}")
     print(f"Teams rated: {len(ratings)}")
 
 

@@ -22,6 +22,9 @@ def test_rejects_missing_or_tied_result():
     with pytest.raises(ValueError):
         resolve_team1_outcome(1, 1)
 
+    with pytest.raises(ValueError):
+        resolve_team1_outcome(-1, 2)
+
 
 def test_calculates_brier_score():
     assert calculate_brier_score(

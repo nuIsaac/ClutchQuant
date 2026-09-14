@@ -7,7 +7,9 @@ import httpx
 from bs4 import BeautifulSoup
 
 from app.database import SessionLocal
-from app.models import Match, Team
+from app.models import Match, MatchObservation, Team
+from app.ingestion.provenance import captured_soup, record_parse
+from app.artifacts import canonical_json, digest
 
 
 VLR_BASE_URL = "https://www.vlr.gg"
@@ -22,6 +24,7 @@ def fetch_page(client, url, retries=5):
     for attempt in range(1, retries + 1):
         try:
             response = client.get(url)
+            soup = captured_soup(response)
 
             if response.status_code == 429:
                 wait = 15 * attempt
@@ -31,10 +34,7 @@ def fetch_page(client, url, retries=5):
 
             response.raise_for_status()
 
-            return BeautifulSoup(
-                response.text,
-                "html.parser",
-            )
+            return soup
 
         except httpx.HTTPError as error:
             if attempt == retries:
@@ -107,6 +107,25 @@ def parse_completed_match(client, match_card):
         client,
         match_url,
     )
+    evidence = match_soup.__dict__.get("cq_evidence")
+    try:
+        data = parse_match_soup(match_soup, vlr_id, event_name, stage)
+    except Exception as error:
+        record_parse(evidence, "failed", entity={"vlr_match_id": vlr_id}, error=error)
+        raise
+    data["parse_sha256"] = record_parse(evidence, "parsed", entity={"vlr_match_id": vlr_id})
+    # Event/stage came from the listing, so preserve that separate source too.
+    parent = match_card
+    while parent is not None:
+        listing = parent.__dict__.get("cq_evidence")
+        if listing:
+            data["listing_evidence"] = listing
+            break
+        parent = parent.parent
+    return data
+
+
+def parse_match_soup(match_soup, vlr_id, event_name, stage):
 
     team1_link = match_soup.select_one(
         "a.match-header-link.mod-1"
@@ -188,6 +207,7 @@ def parse_completed_match(client, match_card):
         "stage": stage,
         "status": "completed",
         "scheduled_at": scheduled_at,
+        "evidence": match_soup.__dict__.get("cq_evidence"),
     }
 
 
@@ -222,6 +242,16 @@ def get_or_create_team(db, team_data):
 
 
 def save_match(db, data):
+    evidence = data.get("evidence")
+    evidence_key = None
+    if evidence:
+        evidence_key = digest(canonical_json({
+            "retrieval": evidence, "vlr_match_id": data["vlr_id"], "parser": "vlr-match-v2",
+            "status": data["status"],
+        }))
+        existing = db.query(MatchObservation).filter_by(evidence_key=evidence_key).first()
+        if existing is not None:
+            return db.get(Match, existing.match_id)
     team1 = get_or_create_team(
         db,
         data["team1"],
@@ -259,6 +289,32 @@ def save_match(db, data):
     match.stage = data["stage"]
     match.status = data["status"]
     match.scheduled_at = data["scheduled_at"]
+
+    evidence = data.get("evidence")
+    if evidence is not None:
+        db.flush()
+        received_at = datetime.fromisoformat(evidence["received_at"])
+        db.add(MatchObservation(
+            match_id=match.id,
+            received_at=received_at,
+            ingested_at=datetime.now(timezone.utc),
+            raw_sha256=evidence["raw_sha256"],
+            source_url=evidence["source_url"],
+            evidence_key=evidence_key,
+            payload={
+                "vlr_match_id": data["vlr_id"],
+                "team1": data["team1"], "team2": data["team2"],
+                "parser_version": "vlr-match-v2", "parse_sha256": data.get("parse_sha256"),
+                "retrieval_sha256": evidence.get("retrieval_sha256"),
+                "listing_evidence": data.get("listing_evidence"),
+                "team1_id": team1.id, "team2_id": team2.id,
+                "team1_score": match.team1_score, "team2_score": match.team2_score,
+                "status": match.status,
+                "scheduled_at": match.scheduled_at.isoformat() if match.scheduled_at else None,
+                "event_name": match.event_name, "stage": match.stage,
+            },
+        ))
+    return match
 
 
 def already_complete(db, vlr_id):

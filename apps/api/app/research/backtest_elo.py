@@ -1,7 +1,8 @@
-from sqlalchemy import select
-
 from app.database import SessionLocal
-from app.models import Match
+from app.match_eligibility import (
+    ELIGIBILITY_POLICY_VERSION,
+    eligible_matches_query,
+)
 from app.scoring import (
     calculate_brier_score,
     calculate_log_loss,
@@ -24,14 +25,7 @@ def run_elo_backtest() -> None:
 
     with SessionLocal() as db:
         matches = db.scalars(
-            select(Match)
-            .where(
-                Match.team1_score.is_not(None),
-                Match.team2_score.is_not(None),
-                Match.team1_score != Match.team2_score,
-                Match.scheduled_at.is_not(None),
-            )
-            .order_by(Match.scheduled_at.asc())
+            eligible_matches_query()
         ).all()
 
         for match in matches:
@@ -93,6 +87,7 @@ def run_elo_backtest() -> None:
     average_brier = total_brier / predictions
     average_log_loss = total_log_loss / predictions
 
+    print(f"Eligibility policy: {ELIGIBILITY_POLICY_VERSION}")
     print(f"Matches evaluated: {predictions}")
     print(f"Accuracy: {accuracy:.3f}")
     print(f"Brier score: {average_brier:.3f}")

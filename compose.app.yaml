@@ -1,0 +1,47 @@
+# Application services only. DATABASE_URL must explicitly identify the target.
+# Existing local PostgreSQL remains managed by compose.yaml.
+services:
+  api:
+    build: ./apps/api
+    environment:
+      APP_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?Set the intended database URL}
+      ARTIFACT_ROOT: /data/artifacts
+      HUMAN_FORECAST_TOKEN: ${HUMAN_FORECAST_TOKEN:-}
+    volumes:
+      - artifacts:/data/artifacts
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+  web:
+    build: ./apps/web
+    environment:
+      API_URL: http://api:8000/api/v1
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+  worker:
+    build: ./apps/api
+    command: ["python", "-m", "app.pipeline", "--interval-seconds", "300", "--pages", "1"]
+    environment:
+      APP_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?Set the intended database URL}
+      ARTIFACT_ROOT: /data/artifacts
+    volumes:
+      - artifacts:/data/artifacts
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.pipeline", "--health"]
+      interval: 60s
+      timeout: 15s
+      start_period: 5m
+      retries: 3
+    restart: unless-stopped
+    stop_grace_period: 120s
+volumes:
+  artifacts:

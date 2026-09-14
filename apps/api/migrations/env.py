@@ -11,7 +11,7 @@ from app.models import Base
 
 config = context.config
 
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+config.set_main_option("sqlalchemy.url", DATABASE_URL.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -34,6 +34,18 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    # A caller may supply a connection scoped to an isolated test schema.
+    # Preserve its transaction/search_path instead of opening another engine.
+    supplied_connection = config.attributes.get("connection")
+    if supplied_connection is not None:
+        context.configure(
+            connection=supplied_connection,
+            target_metadata=target_metadata,
+        )
+        with context.begin_transaction():
+            context.run_migrations()
+        return
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
