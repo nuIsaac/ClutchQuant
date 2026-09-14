@@ -1,0 +1,117 @@
+# Standalone production stack. Never combine with the development compose files.
+x-logging: &logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "5"
+x-api-environment: &api-environment
+  APP_ENV: production
+  DATABASE_URL: postgresql+psycopg://cq_app:${APP_DB_PASSWORD:?Set APP_DB_PASSWORD}@db:5432/clutchquant
+  ARTIFACT_ROOT: /data/artifacts
+  HUMAN_FORECAST_TOKEN: ""
+  OMP_NUM_THREADS: "1"
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: clutchquant
+      POSTGRES_USER: cq_owner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD}
+    volumes:
+      - ${DATA_DIR:?Set DATA_DIR}/postgres:/var/lib/postgresql/data
+      - ./deploy/init-db.sh:/docker-entrypoint-initdb.d/10-clutchquant.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cq_owner -d clutchquant"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    logging: *logging
+    mem_limit: 1g
+  migrate:
+    image: clutchquant-api:${RELEASE_TAG:?Set RELEASE_TAG}
+    build: ./apps/api
+    profiles: [tools]
+    environment:
+      <<: *api-environment
+      DATABASE_URL: postgresql+psycopg://cq_owner:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db:5432/clutchquant
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    logging: *logging
+  api:
+    image: clutchquant-api:${RELEASE_TAG:?Set RELEASE_TAG}
+    build: ./apps/api
+    # API has no published port; only trusted containers can supply proxy headers.
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+    environment: *api-environment
+    volumes:
+      - ${DATA_DIR:?Set DATA_DIR}/artifacts:/data/artifacts:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    init: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    logging: *logging
+    mem_limit: 768m
+  web:
+    image: clutchquant-web:${RELEASE_TAG:?Set RELEASE_TAG}
+    build: ./apps/web
+    environment:
+      API_URL: http://api:8000/api/v1
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+    restart: unless-stopped
+    init: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    logging: *logging
+    mem_limit: 512m
+  worker:
+    image: clutchquant-api:${RELEASE_TAG:?Set RELEASE_TAG}
+    build: ./apps/api
+    command: ["python", "-u", "-m", "app.pipeline", "--interval-seconds", "${WORKER_INTERVAL_SECONDS:-300}", "--pages", "${WORKER_PAGES:-1}"]
+    environment: *api-environment
+    volumes:
+      - ${DATA_DIR:?Set DATA_DIR}/artifacts:/data/artifacts
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.pipeline", "--health"]
+      interval: 60s
+      timeout: 15s
+      start_period: 5m
+      retries: 3
+    restart: unless-stopped
+    stop_grace_period: 10m
+    init: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    logging: *logging
+    mem_limit: 1g
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      CADDY_SITE: ${CADDY_SITE:?Set CADDY_SITE}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${DATA_DIR:?Set DATA_DIR}/caddy:/data
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+    mem_limit: 128m

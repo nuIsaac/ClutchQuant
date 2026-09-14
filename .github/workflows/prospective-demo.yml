@@ -1,0 +1,39 @@
+name: Prospective demo cycle
+on:
+  schedule:
+    - cron: '17 */3 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: prospective-demo
+  cancel-in-progress: false
+jobs:
+  collect:
+    if: vars.FREE_DEMO_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt -c requirements.lock
+      - name: Collect, freeze, reconcile and score
+        run: python -u -m app.pipeline --once --demo-cycle --pages 1
+        env:
+          APP_ENV: production
+          DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
+          DB_POOL_SIZE: '2'
+          DB_MAX_OVERFLOW: '0'
+          ARTIFACT_BACKEND: supabase
+          ARTIFACT_ROOT: ${{ runner.temp }}/clutchquant-artifacts
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ARTIFACT_BUCKET: clutchquant-artifacts
+          OMP_NUM_THREADS: '1'

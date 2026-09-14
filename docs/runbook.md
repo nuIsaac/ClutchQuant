@@ -1,5 +1,14 @@
 # Operating ClutchQuant
 
+## Public demo deployment
+
+Use [the free-demo guide](free-demo.md) for Vercel, Render, Supabase and scheduled
+GitHub Actions. The local persistent Compose worker remains supported. The previous
+single-VM configuration is an optional self-hosted alternative, not the demo target.
+No hosting resources or credentials have been provisioned. Checkpoint `7d9a399`
+is the clean starting point for this deployment-only preparation; older Git failure
+notes below describe the previous session, not a current dirty baseline.
+
 ## Prospective operation (current workflow)
 
 This session started the local Docker container `clutchquant-worker`, using the
@@ -169,7 +178,7 @@ explicit DATABASE_URL and persistent artifacts. From containers, `localhost` ref
 to that container; use the database service hostname or Docker Desktop's
 `host.docker.internal` for the existing host-published local database.
 
-## Production migration and deployment
+## Future AWS alternative (not the initial deployment recommendation)
 
 1. Choose an environment, backup/restore policy, budget, and deployment region.
    Provision RDS PostgreSQL privately and verify restore procedures. Separate the

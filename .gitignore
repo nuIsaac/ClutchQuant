@@ -14,6 +14,9 @@ out/
 .env.local
 .env.*.local
 !.env.example
+deploy/.env.production
+deploy/.env.demo
+deploy/backups/
 
 # Editors and operating systems
 .vscode/

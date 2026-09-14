@@ -1,0 +1,21 @@
+{
+    email {$ACME_EMAIL}
+}
+{$CADDY_SITE} {
+    encode zstd gzip
+    log {
+        output stdout
+        format json
+    }
+    # Public browsing only. Human writes stay disabled in this deployment.
+    route {
+        @write method POST PUT PATCH DELETE
+        respond @write "Read-only public service" 405
+        handle /api/v1/* {
+            reverse_proxy api:8000
+        }
+        handle {
+            reverse_proxy web:3000
+        }
+    }
+}

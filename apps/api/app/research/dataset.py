@@ -9,7 +9,7 @@ from importlib.metadata import version
 
 from sqlalchemy import select
 
-from app.artifacts import artifact_path, digest, write_json
+from app.artifacts import digest, read_bytes, write_json
 from app.match_eligibility import ELIGIBILITY_POLICY_VERSION, match_exclusion_reason
 from app.models import Match, MatchObservation
 
@@ -74,7 +74,7 @@ def export_dataset(db, as_of: datetime) -> tuple[str, dict]:
                            "raw_sha256":item.raw_sha256,"source_url":item.source_url,
                            "result_observed_at":iso(available),"exclusion_reason":reason})
     for raw_hash in raw_hashes:
-        if digest(artifact_path("raw", raw_hash).read_bytes()) != raw_hash:
+        if digest(read_bytes("raw", raw_hash)) != raw_hash:
             raise ValueError("Raw evidence integrity failure")
 
     rows = []

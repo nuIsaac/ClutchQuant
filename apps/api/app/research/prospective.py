@@ -3,7 +3,7 @@ from collections import Counter, defaultdict
 
 from sqlalchemy import select
 
-from app.artifacts import artifact_path, digest, read_json, write_json
+from app.artifacts import digest, read_bytes, read_json, write_json
 from app.models import Forecast, ModelRun
 from app.research.dataset import utc
 from app.research.evaluation import metrics
@@ -32,7 +32,7 @@ def verify_forecast(forecast, run):
     if any(utc(event["result_observed_at"]) > utc(dataset["as_of"]) for event in dataset["result_events"]):
         return "INPUT_AFTER_CUTOFF"
     for key in dataset["raw_sha256"]:
-        if digest(artifact_path("raw",key).read_bytes()) != key:
+        if digest(read_bytes("raw",key)) != key:
             raise ValueError("Raw evidence integrity failure")
     return None
 

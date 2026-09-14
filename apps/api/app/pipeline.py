@@ -21,10 +21,11 @@ logger = logging.getLogger(__name__)
 LOCK_ID = 731940271
 
 
-def run_cycle(*, pages=1, experimental=False, collect=True):
+def run_cycle(*, pages=1, experimental=False, collect=True, forecast_first=False):
     started = datetime.now(timezone.utc)
     run_id = uuid4().hex
-    details = {"run_id":run_id,"started_at":started.isoformat(),"collection_enabled":collect,"steps":{}}
+    details = {"run_id":run_id,"started_at":started.isoformat(),"collection_enabled":collect,
+               "order":"forecast-first" if forecast_first else "results-first","steps":{}}
     report_key = None
     status = "FAILED"
     # Session advisory lock spans the whole cycle, across independent transactions.
@@ -33,14 +34,18 @@ def run_cycle(*, pages=1, experimental=False, collect=True):
             return {"status":"SKIPPED_OVERLAP"}
         try:
             write_json("jobs",{**details,"status":"STARTED"})
+            def collect_step(name, job):
+                result = job()
+                details["steps"][name] = result
+                if result["failed"]:
+                    raise RuntimeError(f"{name} collection reported failures; cycle stopped")
             if collect:
-                for name,job in (("results",lambda:sync_recent_results(pages)),
-                                 ("upcoming",lambda:sync_upcoming_matches(pages))):
-                    result = job()
-                    details["steps"][name] = result
-                    if result["failed"]:
-                        raise RuntimeError(f"{name} collection reported failures; forecasting stopped")
+                if not forecast_first:
+                    collect_step("results",lambda:sync_recent_results(pages))
+                collect_step("upcoming",lambda:sync_upcoming_matches(pages))
             details["steps"]["forecasts"] = generate(experimental,prospective=True)
+            if collect and forecast_first:
+                collect_step("results",lambda:sync_recent_results(pages))
             key,dataset = snapshot_current()
             with SessionLocal() as db:
                 report_key,report = build_report(db,key,dataset)
@@ -67,12 +72,15 @@ def run_cycle(*, pages=1, experimental=False, collect=True):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--once",action="store_true")
+    parser.add_argument("--demo-cycle",action="store_true",help="With --once: freeze before collecting completed results")
     parser.add_argument("--interval-seconds",type=int,default=300)
     parser.add_argument("--pages",type=int,default=1)
     parser.add_argument("--experimental",action="store_true")
     parser.add_argument("--no-collect",action="store_true",help="Use existing fresh evidence; useful for smoke checks")
     parser.add_argument("--health",action="store_true",help="Exit successfully only after a recent successful cycle")
     args = parser.parse_args()
+    if args.demo_cycle and not args.once:
+        parser.error("--demo-cycle requires --once; persistent worker behavior is unchanged")
     if args.health:
         with SessionLocal() as db:
             run = db.scalar(select(PipelineRun).where(PipelineRun.details["collection_enabled"].as_boolean().is_(True)).order_by(PipelineRun.started_at.desc()).limit(1))
@@ -86,7 +94,8 @@ def main():
     for sig in (signal.SIGINT,signal.SIGTERM):
         signal.signal(sig,lambda *_:stop.set())
     while not stop.is_set():
-        result = run_cycle(pages=args.pages,experimental=args.experimental,collect=not args.no_collect)
+        result = run_cycle(pages=args.pages,experimental=args.experimental,collect=not args.no_collect,
+                           forecast_first=args.demo_cycle)
         print(json.dumps(result),flush=True)
         if args.once:
             raise SystemExit(1 if result["status"] == "FAILED" else 0)

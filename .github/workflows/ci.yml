@@ -52,3 +52,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t clutchquant-${{ matrix.app }}:ci apps/${{ matrix.app }}
+  deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install PyYAML==6.0.3
+      - run: python3 deploy/check_demo_config.py
+      - run: for file in deploy/*.sh; do sh -n "$file"; done
+      - run: python3 deploy/smoke.py

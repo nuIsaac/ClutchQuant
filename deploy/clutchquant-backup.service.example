@@ -1,0 +1,11 @@
+[Unit]
+Description=ClutchQuant paired database and artifact backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/clutchquant
+ExecStart=/bin/sh /opt/clutchquant/deploy/backup-offsite.sh spaces:REPLACE_BUCKET/clutchquant
+TimeoutStartSec=3600
+UMask=0077

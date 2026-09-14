@@ -1,5 +1,29 @@
 # ClutchQuant implementation report — 2026-09-14
 
+## Deployment-only preparation after checkpoint 7d9a399
+
+The clean checkpoint was verified. This pass adds an independent production Compose
+stack, Caddy configuration, protected environment template, separate database owner
+and runtime roles, backup/off-host scheduling examples, isolated deployment/recovery
+drill, and CI validation. No application/model code or migration changed. The current
+local collector and database were not redeployed or migrated. See
+[deployment.md](deployment.md) for costs, provider comparison, exact order, variables,
+cutover, worker operations and rollback. No paid resources, accounts, remote pushes,
+public DNS or certificates were created. Earlier sections below are retained as
+historical implementation evidence and are not the diff for this deployment pass.
+
+Validation for this deployment pass: 113 backend tests and 14 frontend tests passed;
+frontend lint, TypeScript and production build passed. Both production images built.
+The isolated production Compose drill passed migration/schema comparison, runtime
+role permissions, proxy routing/read-only enforcement, readiness, worker restart,
+honest collection health, HTTPS redirect headers, PostgreSQL dump/restore, artifact
+archive extraction/integrity checks and persistent artifact reads. All disposable
+test projects were removed; the original collector remains running and healthy.
+Production Caddy HTTPS configuration validated with networking disabled; public
+certificate issuance remains a target-domain check. The original local worker was
+observed running healthy (about 159 MiB resident container usage at inspection,
+not a production load benchmark). No remote CI or paid-provider deployment ran.
+
 ## Current follow-up: prospective operation
 
 This section supersedes the earlier milestone snapshot below. Historical
@@ -301,3 +325,12 @@ artifact storage/S3 backup, ECR images, HTTPS container services, secrets, logs,
 alerts, scheduler, and deployment CI. Keep human writes disabled until the intended
 authentication design is implemented. Public usability still needs staging and
 production verification in the selected environment.
+# Free-demo deployment preparation
+
+The current target is documented in [free-demo.md](free-demo.md): Vercel Hobby,
+Render Free, Supabase Free database/private artifacts, and scheduled GitHub Actions.
+The demo cycle freezes after upcoming collection and before result collection;
+the existing local persistent cycle is unchanged. Remote artifacts preserve original
+hashes and reject overwrite/corruption. No model promotion, cloud provisioning,
+application migration, historical-availability claim or remote push accompanies this
+change. Earlier VM preparation below is superseded as the default target.

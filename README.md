@@ -1,5 +1,8 @@
 # ClutchQuant
 
+Deployment target: [$0 public demo guide](docs/free-demo.md): Vercel Hobby,
+Render Free, Supabase Free and GitHub Actions. No services are provisioned.
+
 ClutchQuant is an esports-native quantitative research platform for Valorant. It transforms competitive match data into structured datasets, matchup analysis, probabilistic forecasts, and long-term measurements of forecasting accuracy.
 
 Most esports statistics platforms explain what already happened. ClutchQuant is built around a harder question: **what could have been predicted before the match began?**

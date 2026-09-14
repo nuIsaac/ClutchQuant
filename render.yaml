@@ -1,0 +1,32 @@
+# Deploy only this free API. Database and scheduled jobs are external.
+services:
+  - type: web
+    name: clutchquant-api-demo
+    runtime: docker
+    plan: free
+    dockerContext: ./apps/api
+    dockerfilePath: ./apps/api/Dockerfile
+    healthCheckPath: /api/v1/ready
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: PORT
+        value: '8000'
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_POOL_SIZE
+        value: '2'
+      - key: DB_MAX_OVERFLOW
+        value: '0'
+      - key: ARTIFACT_BACKEND
+        value: supabase
+      - key: ARTIFACT_ROOT
+        value: /tmp/clutchquant-artifacts
+      - key: ARTIFACT_READ_ONLY
+        value: 'true'
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ARTIFACT_BUCKET
+        value: clutchquant-artifacts
