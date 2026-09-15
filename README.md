@@ -1,20 +1,18 @@
 # ClutchQuant
 
-Valorant forecasting and model evaluation platform.
+Valorant match probabilities, before and during play.
 
 **[View live demo →](https://clutch-quant.vercel.app)**
 
-ClutchQuant estimates match win probabilities from historical Valorant results and
-versioned models. Current research previews are separate from frozen forecasts used
-for prospective evaluation.
+ClutchQuant turns Valorant match history and game state into win probabilities.
+It shows pre-match Elo estimates and score-conditioned live estimates when VLR
+supplies a valid live state.
 
 ## What it does
 
-- Shows current Elo probabilities for upcoming matches, grouped by event.
-- Collects schedules and results from VLR.
-- Saves prospective forecasts before matches start and never overwrites them.
-- Scores verified outcomes with accuracy, Brier score and log loss.
-- Keeps raw evidence, dataset hashes and model-run records for auditing.
+- Pre-match probabilities, team ratings and tournament filters.
+- Live map and series probabilities from actual source scores.
+- VLR ingestion, normalized match storage and leakage-aware model evaluation.
 
 ## Why I built it
 
@@ -28,46 +26,49 @@ and forecasting tools behind it.
 ```text
 VLR → Python collection → Supabase Postgres + private evidence storage
                               ↓
-                    GitHub Actions: freeze and score
+                    Scheduled collection / models
                               ↓
 Historical research snapshot → FastAPI / Render → Next.js / Vercel
 ```
 
 `apps/api` contains ingestion, models, migrations, evaluation and the API.
-`apps/web` contains the frontend. GitHub Actions runs the prospective cycle every
-three hours at minute 17 UTC; the local worker can run continuously.
+`apps/web` contains the frontend.
 
-## Model
+## Models
 
-Elo v1 uses a 1500 starting rating, K=32 and a 400-point scale.
+**Pre-match:** Elo v1, with a 1500 starting rating, K=32 and a 400-point scale.
+A versioned snapshot of roughly 30,000 decisive series is merged with current
+results. Teams use VLR identities; unknown teams keep the starting prior.
 
-The **current research model** replays a versioned snapshot of roughly 30,000
-completed, decisive series, merged with current database results. Teams are matched
-by VLR ID. Tied results are excluded; unseen teams start at 1500.
+**Live:** a dynamic-programming model computes the chance of winning the current
+map, then the series. It handles first-to-13 regulation, two-round overtime wins
+and BO1/BO3/BO5. Winning a round changes the probability according to the score
+and remaining paths to victory, rather than adding a fixed percentage.
 
-**Prospective forecasts** use evidence available before they are frozen. Their saved
-probabilities and provenance do not change when the research model updates. Only
-these forecasts contribute to prospective accuracy, Brier score and log loss.
+Per-round strength is inferred by inverting the pre-match series prior. A diagnostic
+fit on 591 historical maps is documented, but not promoted as a validated live
+model. Economy, map-specific strength and measured side advantages are not modeled.
+Historical availability is incomplete; backtest diagnostics are not live validation.
 
-Most historical results lack original availability evidence. Research previews do
-not claim that their inputs or probabilities were known before those matches.
-Experimental models exist in the research code but have not been promoted.
-
-See the [preview design](docs/decisions/004-current-research-preview.md) and
-[observation-time evaluation rules](docs/decisions/002-observation-time-research.md).
+See the [live model design](docs/decisions/005-live-probability.md) and
+[research snapshot design](docs/decisions/004-current-research-preview.md).
 
 ## Data pipeline
 
-Each collection saves the raw response and a timestamped observation. The scheduled
-cycle syncs upcoming matches, freezes eligible forecasts, collects completed results
-and scores saved forecasts. Dataset and model-run hashes link predictions to their
-inputs. Database constraints and an advisory lock protect against duplicate and
-overlapping runs.
+Python collectors ingest VLR into PostgreSQL through SQLAlchemy. Alembic manages
+the schema. GitHub Actions runs scheduled collection every three hours at minute
+17 UTC; the local worker can run continuously. Raw evidence lives in private
+Supabase Storage. Internal evaluation records remain immutable.
 
-## Tech stack
+The live API uses a separate read-only source cache: 30-second refreshes while
+matches are active, five minutes when idle, and up to four active matches per
+refresh. Missing round scores are labeled; source failures do not become fake
+live probabilities. Refreshes happen only while the API is being requested.
 
-Next.js, React, TypeScript, Tailwind · Python, FastAPI, SQLAlchemy, Alembic ·
-PostgreSQL · Docker · GitHub Actions
+## Stack
+
+Next.js, React, TypeScript, Tailwind; Python, FastAPI, SQLAlchemy, Alembic;
+PostgreSQL, Docker, GitHub Actions. Offline research uses scikit-learn.
 
 ## Running locally
 
@@ -105,16 +106,11 @@ For worker operation, tests and evidence storage, see the [runbook](docs/runbook
 
 ## Deployment
 
-The [live demo](https://clutch-quant.vercel.app) uses Vercel Hobby, Render Free,
+Hosting uses Vercel Hobby, Render Free,
 Supabase Free Postgres/private Storage and scheduled GitHub Actions. Credentials
 live in provider settings and repository secrets, not source control.
 
 See [deployment setup and free-tier limits](docs/free-demo.md). Render can sleep;
 the first request may need a retry. Scheduled collection can be delayed or miss
-matches, and storage and runner quotas still apply.
-
-## Current status
-
-The public demo is live. The prospective pipeline is collecting data, but its
-verified sample is still small. Evaluation remains preliminary; the historical
-research dataset is not a substitute for prospective results.
+matches, and storage and runner quotas still apply. Live round coverage depends on VLR;
+the integration is not a low-latency official data feed.

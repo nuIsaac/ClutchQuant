@@ -7,7 +7,7 @@ from pathlib import Path
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 
-from app.routers import forecasts, matches, research
+from app.routers import forecasts, matches, research, live
 
 
 app = FastAPI(
@@ -18,6 +18,7 @@ app = FastAPI(
 app.include_router(matches.router)
 app.include_router(forecasts.router)
 app.include_router(research.router)
+app.include_router(live.router)
 
 
 @app.get("/api/v1/health")

@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import type { UpcomingMatch } from "@/lib/upcoming";
-import { getForecastDisplay } from "@/lib/forecast-display";
 import { eventFilters, matchesEvent, formatTime, percent } from "@/lib/market";
 import { ModelBadge, ProbabilityBar } from "./market-primitives";
 
@@ -41,11 +40,6 @@ export function ForecastDetail({ match }: { match: UpcomingMatch }) {
       <div className="mt-3 space-y-3 text-xs text-slate-400">
         {p && (
           <>
-            <p className="text-slate-200">Current model preview · Elo v1</p>
-            <p className="font-mono text-lg text-slate-100">
-              {percent(p.team1_win_probability)} /{" "}
-              {percent(1 - p.team1_win_probability)}
-            </p>
             <dl className="grid grid-cols-2 gap-2">
               <div>
                 <dt>{match.team1_name} Elo</dt>
@@ -82,11 +76,6 @@ export function ForecastDetail({ match }: { match: UpcomingMatch }) {
           <summary className="cursor-pointer">
             Advanced · provenance &amp; evidence
           </summary>
-          <p className="mt-2">
-            Match #{match.id}. Historical availability is unknown for research
-            previews. This value was not necessarily known at the original lock
-            time.
-          </p>
           {p && (
             <p className="mt-2 break-all font-mono">
               {p.source_key}
@@ -98,36 +87,6 @@ export function ForecastDetail({ match }: { match: UpcomingMatch }) {
               Exported {formatTime(p.base_exported_at)}
             </p>
           )}
-          {match.forecasts.map((f) => {
-            const d = getForecastDisplay(match, f);
-            return (
-              <div key={f.id} className="border-t border-slate-800 pt-2">
-                <p className="text-slate-200">
-                  {f.source_key.endsWith(":prospective-v1")
-                    ? "Frozen prospective forecast"
-                    : "Other saved forecast"}{" "}
-                  · {percent(d.team1Probability)} /{" "}
-                  {percent(
-                    d.team1Probability === null ? null : 1 - d.team1Probability,
-                  )}
-                </p>
-                <p className="mt-1">
-                  Created {formatTime(f.created_at)} · lock{" "}
-                  {formatTime(f.lock_time)}
-                </p>
-                <p className="mt-1">{d.description}</p>
-              </div>
-            );
-          })}
-          {match.forecasts.map((f) => (
-            <p key={f.id} className="mt-2 break-all font-mono">
-              Forecast #{f.id} · {f.source_key}
-              <br />
-              Run {f.model_run_id ?? "Unavailable"}
-              <br />
-              Saved probability {percent(f.team1_win_probability)}
-            </p>
-          ))}
         </details>
         {match.vlr_id !== null && (
           <a
@@ -146,7 +105,10 @@ export function ForecastDetail({ match }: { match: UpcomingMatch }) {
 export function MarketCard({ match }: { match: UpcomingMatch }) {
   const p = match.current_preview?.team1_win_probability ?? null;
   return (
-    <article className="min-w-0 rounded-lg bg-[#111722] p-4 transition-colors hover:bg-[#151c29]">
+    <article
+      id={`match-${match.id}`}
+      className="min-w-0 rounded-lg bg-[#111722] p-4 transition-colors hover:bg-[#151c29]"
+    >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400">
         <span className="truncate">{match.stage ?? "Stage unavailable"}</span>
         <time dateTime={match.scheduled_at}>
