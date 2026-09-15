@@ -89,5 +89,24 @@ class ForecastScoreResponse(BaseModel):
     log_loss: float
 
 
+class ResearchPreviewResponse(BaseModel):
+    source_key: str
+    team1_win_probability: float = Field(ge=0, le=1)
+    computed_at: datetime
+    history_count: int
+    dataset_sha256: str
+    base_dataset_sha256: str
+    base_exported_at: datetime
+    team1_unseen: bool
+    team2_unseen: bool
+    team1_rating: float
+    team2_rating: float
+    team1_history_count: int
+    team2_history_count: int
+    availability: Literal["UNKNOWN"]
+    used_for_prospective_scoring: Literal[False]
+
+
 class UpcomingForecastResponse(UpcomingMatchResponse):
     forecasts: list[ForecastResponse]
+    current_preview: ResearchPreviewResponse | None = None

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #090d14;
+  --foreground: #e2e8f0;
 }
 
 @theme inline {
@@ -24,3 +24,6 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+html { scroll-behavior: smooth; color-scheme: dark; }
+:focus-visible { outline: 2px solid #a78bfa; outline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

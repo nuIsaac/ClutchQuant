@@ -76,9 +76,12 @@ def list_upcoming_matches(
 
 @router.get("/upcoming/forecasts", response_model=list[UpcomingForecastResponse])
 def upcoming_forecasts(db: DatabaseSession, limit: int = Query(default=100,ge=1,le=500)):
+    from app.research.preview import previews
     matches = list_upcoming_matches(db,limit=limit)
+    current = previews(db, matches)
     grouped = {match.id:[] for match in matches}
     if grouped:
         for forecast in db.query(Forecast).filter(Forecast.match_id.in_(grouped)).order_by(Forecast.source_key):
             grouped[forecast.match_id].append(ForecastResponse.model_validate(forecast))
-    return [UpcomingForecastResponse(**match.model_dump(),forecasts=grouped[match.id]) for match in matches]
+    return [UpcomingForecastResponse(**match.model_dump(),forecasts=grouped[match.id],
+                                    current_preview=current.get(match.id)) for match in matches]

@@ -1,97 +1,241 @@
-import { getForecastDisplay } from "@/lib/forecast-display";
-import { loadUpcoming, modelLabel } from "@/lib/upcoming";
-import { Suspense } from "react";
-import ProspectiveHistory from "./prospective-history";
+import Link from "next/link";
+import { loadUpcoming } from "@/lib/upcoming";
+import { loadProspective } from "@/lib/prospective";
+import { formatTime, percent } from "@/lib/market";
+import MarketBoard from "./components/market-board";
+import { MetricCard, ModelBadge } from "./components/market-primitives";
+import AuditTable from "./components/audit-table";
 
-const API_URL =
-  process.env.API_URL ??
-  "http://127.0.0.1:8000/api/v1";
-
-function matchTime(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
-    timeZone: "America/New_York", timeZoneName: "short",
-  }).format(new Date(value));
-}
-
-function probability(value: number | null) {
-  return value === null ? "Unavailable" : `${(value * 100).toFixed(1)}%`;
-}
-
+const API_URL = process.env.API_URL ?? "http://127.0.0.1:8000/api/v1";
 export default async function Home() {
-  const result = await loadUpcoming(API_URL);
+  const [upcoming, report] = await Promise.all([
+    loadUpcoming(API_URL),
+    loadProspective(API_URL),
+  ]);
+  const matches = upcoming.ok ? upcoming.matches : [];
+  const model = report?.models["model:elo:v1:prospective-v1"];
+  const leaders = matches
+    .filter((m) => m.current_preview)
+    .sort(
+      (a, b) =>
+        Math.abs(b.current_preview!.team1_win_probability - 0.5) -
+        Math.abs(a.current_preview!.team1_win_probability - 0.5),
+    )
+    .slice(0, 4);
+  const history = matches.find((m) => m.current_preview)?.current_preview;
   return (
-    <main className="min-h-screen bg-zinc-950 text-white">
-      <div className="mx-auto max-w-6xl px-6 py-10">
-        <header className="border-b border-zinc-800 pb-8">
-          <p className="font-mono text-xs tracking-[0.35em] text-emerald-400">CLUTCHQUANT</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">Valorant forecasting,<span className="text-zinc-500"> quantified.</span></h1>
-          <p className="mt-4 max-w-2xl text-zinc-400">Compare recorded win probabilities, model versions, and the evidence behind each forecast.</p>
-        </header>
-        <section className="py-10" aria-labelledby="upcoming-heading">
-          <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-            <h2 id="upcoming-heading" className="text-2xl font-semibold">Upcoming matches</h2>
-            <p className="text-sm text-zinc-400">All times Eastern · up to 100 scheduled matches</p>
+    <main className="min-h-screen bg-[#090d14] text-slate-100">
+      <header className="border-b border-slate-800/70 bg-[#0d121c]">
+        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-4 px-4 py-4 lg:px-8">
+          <Link href="/" className="text-base font-black tracking-[.16em]">
+            CLUTCH<span className="text-violet-400">QUANT</span>
+          </Link>
+          <nav
+            className="order-3 flex w-full gap-6 text-xs font-medium text-slate-400 sm:order-none sm:w-auto"
+            aria-label="Main navigation"
+          >
+            {[
+              ["Markets", "markets"],
+              ["Forecasts", "forecasts"],
+              ["Models", "models"],
+              ["Performance", "performance"],
+            ].map(([label, id]) => (
+              <a key={id} href={`#${id}`} className="hover:text-violet-300">
+                {label}
+              </a>
+            ))}
+          </nav>
+          <div className="flex items-center gap-2 text-[10px] text-slate-500">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${report?.last_run_status === "SUCCEEDED" ? "bg-cyan-300" : "bg-amber-400"}`}
+            />
+            <span>
+              ELO v1 ·{" "}
+              {report?.last_run_status === "SUCCEEDED"
+                ? "LAST RUN OK"
+                : "STATUS UNAVAILABLE"}
+            </span>
           </div>
-          {!result.ok ? (
-            <div role="alert" className="rounded border border-amber-900 bg-amber-950/20 p-8">
-              <p>{result.error}</p>
-              <form action="/" method="get"><button type="submit" className="mt-3 cursor-pointer text-emerald-400 underline">Reload matches</button></form>
+        </div>
+      </header>
+      <div className="mx-auto max-w-[1440px] px-4 py-6 lg:px-8">
+        <section className="mb-5 flex flex-wrap items-end justify-between gap-5">
+          <div>
+            <p className="mb-1 text-[10px] uppercase tracking-[.2em] text-violet-400">
+              VALORANT / FORECAST TERMINAL
+            </p>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Valorant forecasts, quantified.
+            </h1>
+            <p className="mt-1 text-xs text-slate-500">
+              Current research. Frozen predictions. Measured outcomes.
+            </p>
+          </div>
+          <p className="text-[10px] text-slate-500">
+            Last pipeline update
+            <br />
+            <span className="text-slate-400">
+              {formatTime(report?.last_run_at)}
+            </span>
+          </p>
+        </section>
+        <div className="mb-5 grid grid-cols-2 gap-y-4 rounded-lg bg-[#111722] py-4 sm:grid-cols-4">
+          <MetricCard
+            label="Upcoming matches"
+            value={upcoming.ok ? String(matches.length) : "—"}
+            note="Scheduled / all events"
+          />
+          <MetricCard
+            label="Resolved · Elo v1"
+            value={model ? String(model.count) : "—"}
+            note="Verified prospective outcomes"
+          />
+          <MetricCard
+            label="Prospective accuracy"
+            value={model ? percent(model.accuracy) : "—"}
+            note="Frozen forecasts only"
+          />
+          <MetricCard
+            label="Brier score"
+            value={model ? model.brier.toFixed(3) : "—"}
+            note="Lower is better"
+          />
+        </div>
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+          <section id="markets" className="min-w-0 scroll-mt-4">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold">Upcoming forecasts</h2>
+              <span className="text-[10px] text-slate-500">
+                Eastern time · up to 100 matches
+              </span>
             </div>
-          ) : result.matches.length === 0 ? (
-            <div className="rounded border border-zinc-800 p-8">
-              <p>No upcoming matches are currently scheduled.</p>
-              <p className="mt-2 text-sm text-zinc-400">New matchups will appear after the next successful data update.</p>
-            </div>
+            {upcoming.ok ? (
+              <MarketBoard matches={matches} />
+            ) : (
+              <div
+                role="alert"
+                className="mt-4 rounded-lg bg-amber-950/30 p-6 text-sm text-amber-200"
+              >
+                {upcoming.error}
+                <form action="/" method="get">
+                  <button
+                    type="submit"
+                    className="mt-3 cursor-pointer underline"
+                  >
+                    Reload forecasts
+                  </button>
+                </form>
+              </div>
+            )}
+          </section>
+          <aside className="space-y-4 lg:pt-10">
+            <section className="rounded-lg bg-[#111722] p-4">
+              <h2 className="text-sm font-semibold">Strongest model leans</h2>
+              <p className="mt-1 text-[10px] text-slate-500">
+                Current probability · not market movement
+              </p>
+              <div className="mt-3 divide-y divide-slate-800">
+                {leaders.map((m) => {
+                  const p = m.current_preview!.team1_win_probability;
+                  return (
+                    <a
+                      href="#forecasts"
+                      key={m.id}
+                      className="flex items-center justify-between gap-2 py-3 text-xs"
+                    >
+                      <span className="min-w-0 truncate text-slate-300">
+                        {p >= 0.5 ? m.team1_name : m.team2_name}
+                      </span>
+                      <span className="font-mono text-violet-300">
+                        {percent(Math.max(p, 1 - p))}
+                      </span>
+                    </a>
+                  );
+                })}
+                {!leaders.length && (
+                  <p className="py-3 text-xs text-slate-500">
+                    No current previews available.
+                  </p>
+                )}
+              </div>
+            </section>
+            <section
+              id="models"
+              className="scroll-mt-4 rounded-lg bg-[#111722] p-4"
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold">Model desk</h2>
+                <ModelBadge current>ELO v1</ModelBadge>
+              </div>
+              <p className="mt-3 font-mono text-2xl">
+                {history?.history_count.toLocaleString("en-US") ?? "—"}
+              </p>
+              <p className="text-[10px] text-slate-500">
+                Historical series in current research state
+              </p>
+              <p className="mt-4 text-xs leading-5 text-slate-400">
+                Research previews use broader history. Prospective forecasts use
+                evidence available before freezing and remain immutable.
+              </p>
+              <div className="mt-3 border-t border-slate-800 pt-3 text-[10px] leading-5 text-slate-500">
+                1500 starting rating · K = 32
+                <br />
+                Historical availability: unknown
+                <br />
+                Unseen teams retain the starting prior
+              </div>
+            </section>
+          </aside>
+        </div>
+        <section
+          id="performance"
+          className="mt-5 scroll-mt-4 border-t border-slate-800/70 pt-5"
+        >
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">Prospective performance</h2>
+            <ModelBadge>FROZEN FORECASTS ONLY</ModelBadge>
+          </div>
+          {!report ? (
+            <p className="text-sm text-amber-300">
+              Evaluation is temporarily unavailable.
+            </p>
           ) : (
-            <div className="space-y-6">
-              {result.matches.map((match) => (
-                <article key={match.id} className="rounded border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6">
-                  <div className="flex flex-wrap justify-between gap-3 text-sm text-zinc-400">
-                    <p>{match.event_name ?? "Unknown event"} · {match.stage ?? "Stage unavailable"}</p>
-                    <time dateTime={match.scheduled_at}>{matchTime(match.scheduled_at)}</time>
+            <>
+              {Object.entries(report.models).map(([key, m]) => (
+                <div key={key} className="mb-3 rounded-lg bg-[#111722] p-4">
+                  <p className="mb-4 break-all font-mono text-[10px] text-slate-400">
+                    {key}
+                  </p>
+                  <div className="grid grid-cols-2 gap-y-4 sm:grid-cols-4">
+                    <MetricCard label="Accuracy" value={percent(m.accuracy)} />
+                    <MetricCard label="Brier" value={m.brier.toFixed(3)} />
+                    <MetricCard
+                      label="Log loss"
+                      value={m.log_loss.toFixed(3)}
+                    />
+                    <MetricCard label="Resolved" value={String(m.count)} />
                   </div>
-                  <h3 className="my-5 text-2xl font-semibold">{match.team1_name}<span className="px-3 text-sm font-normal text-zinc-500">vs.</span>{match.team2_name}</h3>
-                  {match.forecasts.length === 0 ? (
-                    <p className="border-t border-zinc-800 py-4 text-sm text-zinc-400">No forecast has been recorded for this matchup.</p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-sm">
-                        <caption className="sr-only">Recorded forecasts for {match.team1_name} versus {match.team2_name}</caption>
-                        <thead className="border-b border-zinc-800 text-zinc-400"><tr>
-                          <th scope="col" className="py-3 pr-4 font-normal">Model / source</th>
-                          <th scope="col" className="px-3 py-3 text-right font-normal">{match.team1_name}</th>
-                          <th scope="col" className="py-3 pl-3 text-right font-normal">{match.team2_name}</th>
-                        </tr></thead>
-                        <tbody>{match.forecasts.map((forecast) => {
-                          const display = getForecastDisplay(match, forecast);
-                          return (
-                            <tr key={forecast.id} className="border-b border-zinc-800/70 align-top">
-                              <th scope="row" className="py-4 pr-4 font-normal">
-                                <span>{modelLabel(forecast.source_key)}</span>
-                                <details className="mt-2 text-xs text-zinc-400">
-                                  <summary className="cursor-pointer text-emerald-400">Forecast details</summary>
-                                  <p className="mt-2 max-w-lg">{display.description}</p>
-                                  <p className="mt-2">Recorded {matchTime(forecast.created_at)} · locks {matchTime(forecast.lock_time)}</p>
-                                  <p className="mt-2 break-all font-mono">{forecast.model_run_id ? `Run ${forecast.model_run_id}` : "Historical run provenance unavailable"}</p>
-                                </details>
-                              </th>
-                              <td className="px-3 py-4 text-right font-mono">{probability(display.team1Probability)}</td>
-                              <td className="py-4 pl-3 text-right font-mono">{probability(display.team1Probability === null ? null : 1-display.team1Probability)}</td>
-                            </tr>
-                          );
-                        })}</tbody>
-                      </table>
-                    </div>
-                  )}
-                  {match.vlr_id !== null && <a className="mt-4 inline-block text-xs text-emerald-400 underline" href={`https://www.vlr.gg/${match.vlr_id}`} target="_blank" rel="noreferrer">Match details on VLR</a>}
-                </article>
+                  <p className="mt-4 text-[10px] text-slate-500">
+                    Calibration:{" "}
+                    {m.calibration_status.toLowerCase().replaceAll("_", " ")} ·
+                    Descriptive results; no superiority claim. Research previews
+                    are excluded.
+                  </p>
+                </div>
               ))}
-            </div>
+              {!Object.keys(report.models).length && (
+                <p className="text-sm text-slate-400">
+                  No verified prospective outcomes yet.
+                </p>
+              )}
+              <AuditTable records={report.records} total={report.total} />
+            </>
           )}
         </section>
-        <Suspense fallback={<p className="py-8 text-zinc-400">Loading prediction history…</p>}><ProspectiveHistory apiUrl={API_URL} /></Suspense>
-        <footer className="border-t border-zinc-800 pt-5 text-xs leading-6 text-zinc-500">Experimental models are labeled individually. A missing forecast is not a 50% prediction. No consensus is shown unless an ensemble forecast has been explicitly recorded.</footer>
+        <footer className="mt-6 border-t border-slate-800/70 pt-4 text-[10px] leading-5 text-slate-600">
+          CLUTCHQUANT · Forecasting &amp; research. No trading, prices or
+          payouts. Current previews are not prospective performance claims.
+        </footer>
       </div>
     </main>
   );

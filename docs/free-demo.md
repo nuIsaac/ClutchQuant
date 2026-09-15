@@ -1,5 +1,13 @@
 # $0 public proof of concept
 
+The public terminal now separates current research previews from immutable
+prospective forecasts. See [the preview decision](decisions/004-current-research-preview.md).
+The backend image includes a versioned broad-history snapshot; preview computation
+is read-only and does not require importing that history into Supabase. Refresh
+the snapshot from the full local database with `python -m app.research.preview --export`
+and redeploy after reviewing changes. Never substitute preview outcomes into
+prospective performance metrics.
+
 The deployment target is Vercel Hobby (Next.js), Render Free Web Service
 (FastAPI Docker), Supabase Free (Postgres **and a private Storage bucket**), and
 GitHub Actions (short scheduled jobs). Use provider subdomains and HTTPS; no paid
