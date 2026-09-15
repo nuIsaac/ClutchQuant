@@ -9,7 +9,7 @@ assert events['schedule'] == [{'cron': '17 */3 * * *'}]
 assert 'pull_request' not in events
 assert workflow['concurrency']['cancel-in-progress'] is False
 job = workflow['jobs']['collect']
-assert job['timeout-minutes'] == 6
+assert job['timeout-minutes'] == 20
 assert job['if'] == "vars.FREE_DEMO_ENABLED == 'true'"
 step = job['steps'][-1]
 assert step['run'] == 'python -u -m app.pipeline --once --demo-cycle --pages 1'
