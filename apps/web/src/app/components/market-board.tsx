@@ -42,6 +42,10 @@ export function ForecastDetail({ match }: { match: UpcomingMatch }) {
         {p && (
           <>
             <p className="text-slate-200">Current model preview · Elo v1</p>
+            <p className="font-mono text-lg text-slate-100">
+              {percent(p.team1_win_probability)} /{" "}
+              {percent(1 - p.team1_win_probability)}
+            </p>
             <dl className="grid grid-cols-2 gap-2">
               <div>
                 <dt>{match.team1_name} Elo</dt>
@@ -60,10 +64,7 @@ export function ForecastDetail({ match }: { match: UpcomingMatch }) {
               Rating difference: {(p.team1_rating - p.team2_rating).toFixed(0)}{" "}
               · {p.history_count.toLocaleString("en-US")} historical series
             </p>
-            <p>
-              Computed {formatTime(p.computed_at)}. Sample size is context, not
-              a confidence interval.
-            </p>
+            <p>Updated {formatTime(p.computed_at)}.</p>
             {(p.team1_unseen || p.team2_unseen) && (
               <p className="text-amber-300">
                 1500 cold-start prior:{" "}
@@ -77,27 +78,6 @@ export function ForecastDetail({ match }: { match: UpcomingMatch }) {
             )}
           </>
         )}
-        {match.forecasts.map((f) => {
-          const d = getForecastDisplay(match, f);
-          return (
-            <div key={f.id} className="border-t border-slate-800 pt-2">
-              <p className="text-slate-200">
-                {f.source_key.endsWith(":prospective-v1")
-                  ? "Frozen prospective forecast"
-                  : "Other saved forecast"}{" "}
-                · {percent(d.team1Probability)} /{" "}
-                {percent(
-                  d.team1Probability === null ? null : 1 - d.team1Probability,
-                )}
-              </p>
-              <p className="mt-1">
-                Created {formatTime(f.created_at)} · lock{" "}
-                {formatTime(f.lock_time)}
-              </p>
-              <p className="mt-1">{d.description}</p>
-            </div>
-          );
-        })}
         <details className="rounded bg-slate-950 p-2">
           <summary className="cursor-pointer">
             Advanced · provenance &amp; evidence
@@ -118,6 +98,27 @@ export function ForecastDetail({ match }: { match: UpcomingMatch }) {
               Exported {formatTime(p.base_exported_at)}
             </p>
           )}
+          {match.forecasts.map((f) => {
+            const d = getForecastDisplay(match, f);
+            return (
+              <div key={f.id} className="border-t border-slate-800 pt-2">
+                <p className="text-slate-200">
+                  {f.source_key.endsWith(":prospective-v1")
+                    ? "Frozen prospective forecast"
+                    : "Other saved forecast"}{" "}
+                  · {percent(d.team1Probability)} /{" "}
+                  {percent(
+                    d.team1Probability === null ? null : 1 - d.team1Probability,
+                  )}
+                </p>
+                <p className="mt-1">
+                  Created {formatTime(f.created_at)} · lock{" "}
+                  {formatTime(f.lock_time)}
+                </p>
+                <p className="mt-1">{d.description}</p>
+              </div>
+            );
+          })}
           {match.forecasts.map((f) => (
             <p key={f.id} className="mt-2 break-all font-mono">
               Forecast #{f.id} · {f.source_key}
@@ -144,12 +145,6 @@ export function ForecastDetail({ match }: { match: UpcomingMatch }) {
 }
 export function MarketCard({ match }: { match: UpcomingMatch }) {
   const p = match.current_preview?.team1_win_probability ?? null;
-  const frozen = match.forecasts.find(
-    (f) => f.source_key === "model:elo:v1:prospective-v1",
-  );
-  const saved = frozen
-    ? getForecastDisplay(match, frozen).team1Probability
-    : null;
   return (
     <article className="min-w-0 rounded-lg bg-[#111722] p-4 transition-colors hover:bg-[#151c29]">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400">
@@ -173,24 +168,11 @@ export function MarketCard({ match }: { match: UpcomingMatch }) {
       <ProbabilityBar probability={p} />
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <ModelBadge current>CURRENT MODEL</ModelBadge>
-        <span className="text-[10px] text-slate-400">
-          Current model preview
-        </span>
+        <span className="text-[10px] text-slate-400">Elo v1</span>
       </div>
-      <p className="mt-1 text-[10px] text-slate-500">
-        Research preview · not used for prospective scoring
-      </p>
       {p === null && (
         <p className="mt-2 text-xs text-amber-300">Preview unavailable</p>
       )}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-        <span className="text-slate-500">Prospective · frozen</span>
-        <span className="font-mono text-slate-400">
-          {frozen
-            ? `${percent(saved)} / ${percent(saved === null ? null : 1 - saved)}`
-            : "Not recorded"}
-        </span>
-      </div>
       <ForecastDetail match={match} />
     </article>
   );

@@ -13,7 +13,6 @@ export default async function Home() {
     loadProspective(API_URL),
   ]);
   const matches = upcoming.ok ? upcoming.matches : [];
-  const model = report?.models["model:elo:v1:prospective-v1"];
   const leaders = matches
     .filter((m) => m.current_preview)
     .sort(
@@ -68,7 +67,7 @@ export default async function Home() {
               Valorant forecasts, quantified.
             </h1>
             <p className="mt-1 text-xs text-slate-500">
-              Current research. Frozen predictions. Measured outcomes.
+              Match probabilities from historical results.
             </p>
           </div>
           <p className="text-[10px] text-slate-500">
@@ -81,25 +80,32 @@ export default async function Home() {
         </section>
         <div className="mb-5 grid grid-cols-2 gap-y-4 rounded-lg bg-[#111722] py-4 sm:grid-cols-4">
           <MetricCard
-            label="Upcoming matches"
-            value={upcoming.ok ? String(matches.length) : "—"}
-            note="Scheduled / all events"
+            label="Historical series"
+            value={history?.history_count.toLocaleString("en-US") ?? "?"}
+            note="Research model history"
           />
           <MetricCard
-            label="Resolved · Elo v1"
-            value={model ? String(model.count) : "—"}
-            note="Verified prospective outcomes"
+            label="Upcoming forecasts"
+            value={
+              upcoming.ok
+                ? String(matches.filter((m) => m.current_preview).length)
+                : "?"
+            }
+            note="Current model"
           />
           <MetricCard
-            label="Prospective accuracy"
-            value={model ? percent(model.accuracy) : "—"}
-            note="Frozen forecasts only"
+            label="Events"
+            value={
+              upcoming.ok
+                ? String(
+                    new Set(matches.map((m) => m.event_name).filter(Boolean))
+                      .size,
+                  )
+                : "?"
+            }
+            note="Upcoming tournaments"
           />
-          <MetricCard
-            label="Brier score"
-            value={model ? model.brier.toFixed(3) : "—"}
-            note="Lower is better"
-          />
+          <MetricCard label="Model" value="Elo v1" note="1500 prior ? K = 32" />
         </div>
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
           <section id="markets" className="min-w-0 scroll-mt-4">
@@ -174,27 +180,30 @@ export default async function Home() {
                 Historical series in current research state
               </p>
               <p className="mt-4 text-xs leading-5 text-slate-400">
-                Research previews use broader history. Prospective forecasts use
-                evidence available before freezing and remain immutable.
+                Elo ratings update with completed series. New teams start at
+                1500.
               </p>
               <div className="mt-3 border-t border-slate-800 pt-3 text-[10px] leading-5 text-slate-500">
                 1500 starting rating · K = 32
                 <br />
-                Historical availability: unknown
+                Research model
                 <br />
                 Unseen teams retain the starting prior
               </div>
             </section>
           </aside>
         </div>
-        <section
+        <details
           id="performance"
           className="mt-5 scroll-mt-4 border-t border-slate-800/70 pt-5"
         >
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold">Prospective performance</h2>
-            <ModelBadge>FROZEN FORECASTS ONLY</ModelBadge>
-          </div>
+          <summary className="mb-4 cursor-pointer text-sm text-slate-400">
+            Methodology &amp; prospective evaluation
+          </summary>
+          <p className="mb-4 text-xs text-slate-500">
+            Metrics use frozen prospective forecasts, not the current research
+            model. Small samples are preliminary.
+          </p>
           {!report ? (
             <p className="text-sm text-amber-300">
               Evaluation is temporarily unavailable.
@@ -231,7 +240,7 @@ export default async function Home() {
               <AuditTable records={report.records} total={report.total} />
             </>
           )}
-        </section>
+        </details>
         <footer className="mt-6 border-t border-slate-800/70 pt-4 text-[10px] leading-5 text-slate-600">
           CLUTCHQUANT · Forecasting &amp; research. No trading, prices or
           payouts. Current previews are not prospective performance claims.

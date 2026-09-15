@@ -1,112 +1,120 @@
 # ClutchQuant
 
-Deployment target: [$0 public demo guide](docs/free-demo.md): Vercel Hobby,
-Render Free, Supabase Free and GitHub Actions. No services are provisioned.
+Valorant forecasting and model evaluation platform.
 
-ClutchQuant is an esports-native quantitative research platform for Valorant. It transforms competitive match data into structured datasets, matchup analysis, probabilistic forecasts, and long-term measurements of forecasting accuracy.
+**[View live demo →](https://clutch-quant.vercel.app)**
 
-Most esports statistics platforms explain what already happened. ClutchQuant is built around a harder question: **what could have been predicted before the match began?**
+ClutchQuant estimates match win probabilities from historical Valorant results and
+versioned models. Current research previews are separate from frozen forecasts used
+for prospective evaluation.
 
-## Core research question
+## What it does
 
-Can competitive gaming expertise and historical match data produce reliable, well-calibrated forecasts?
+- Shows current Elo probabilities for upcoming matches, grouped by event.
+- Collects schedules and results from VLR.
+- Saves prospective forecasts before matches start and never overwrites them.
+- Scores verified outcomes with accuracy, Brier score and log loss.
+- Keeps raw evidence, dataset hashes and model-run records for auditing.
 
-ClutchQuant evaluates that question by recording human and model predictions before matches, preserving the information available at prediction time, and comparing those forecasts against actual results.
+## Why I built it
 
-## Core capabilities
+I've competed at a high level in Valorant, reached the top 25 on the NA leaderboard,
+led teams and spent a lot of time analyzing matches. ClutchQuant started as a way
+to turn that experience into something measurable, while building the data pipeline
+and forecasting tools behind it.
 
-The list below describes the product direction, not a list of completed features.
-Currently implemented: VLR match/map/player-stat ingestion, upcoming-match sync,
-PostgreSQL storage and migrations, human forecast submission, persisted Elo v1
-forecasts, per-forecast scoring, and a Next.js upcoming-match dashboard.
+## Architecture
 
-Also implemented: content-addressed raw/dataset/report snapshots, observation-time
-replay, calibration reports, experimental Elo decay candidates, logistic regression,
-gradient boosting, guarded ensemble evaluation, model-run provenance, and a
-multi-model dashboard. A recurring prospective pipeline now captures fresh source
-observations, freezes actual forecasts, and scores them separately from diagnostics.
-Strict evaluation of the original backfill remains **BLOCKED** by missing original
-availability evidence; prospective outcomes must accumulate over time.
-No experimental model or ensemble has been promoted. Roster history, market
-comparisons, and public deployment remain future work. Elo v1 remains frozen.
-
-See the [operating and deployment runbook](docs/runbook.md),
-[evaluation decision](docs/decisions/002-observation-time-research.md), and
-[implementation report](docs/implementation-report.md) for commands and measured results.
-
-See [the data and forecast correctness decision](docs/decisions/001-data-and-forecast-correctness.md)
-for implemented rules, known evaluation limits, the required migration, and test
-commands.
-
-- Ingest match, map, team, player, roster, event, and performance data
-- Resolve inconsistent team and player identities across historical records
-- Build matchup-level features from recent form, map pools, roster changes, and opponent strength
-- Generate model-based win probabilities
-- Record human forecasts alongside model forecasts
-- Lock predictions before match time to prevent hindsight bias
-- Measure calibration, accuracy, Brier score, log loss, and performance over time
-- Compare internal probabilities against external market probabilities
-- Explore teams, players, maps, events, and historical matchups through an interactive dashboard
-- Preserve raw data and dataset versions for reproducible research
-
-## Forecasting workflow
-
-1. Competitive data is collected from public Valorant sources.
-2. Raw records are cleaned, validated, and converted into normalized entities.
-3. Historical features are calculated using only information available before each match.
-4. Human and model forecasts are recorded with timestamps.
-5. Predictions become immutable when the match begins.
-6. Results are ingested and forecasts are evaluated.
-7. Calibration and performance are tracked across teams, events, regions, and model versions.
-
-## System architecture
-
-```mermaid
-flowchart TD
-    A["Competitive data sources"] --> B["Python ingestion pipeline"]
-    B --> C["PostgreSQL research database"]
-    C --> D["Forecasting and evaluation"]
-    C --> E["FastAPI service"]
-    D --> E
-    E --> F["Next.js analytics platform"]
+```text
+VLR → Python collection → Supabase Postgres + private evidence storage
+                              ↓
+                    GitHub Actions: freeze and score
+                              ↓
+Historical research snapshot → FastAPI / Render → Next.js / Vercel
 ```
 
-## Technology
+`apps/api` contains ingestion, models, migrations, evaluation and the API.
+`apps/web` contains the frontend. GitHub Actions runs the prospective cycle every
+three hours at minute 17 UTC; the local worker can run continuously.
 
-- **Frontend:** Next.js, React, and TypeScript
-- **Backend:** Python and FastAPI
-- **Database:** PostgreSQL
-- **Data layer:** SQLAlchemy and Alembic
-- **Infrastructure:** Docker
-- **Data collection:** Python-based ingestion and parsing pipelines
-- **Research:** Statistical modeling, probability calibration, and reproducible evaluation
+## Model
 
-## Repository structure
+Elo v1 uses a 1500 starting rating, K=32 and a 400-point scale.
 
-- `apps/web` contains the Next.js analytics interface.
-- `apps/api` contains the FastAPI application, database models, migrations, ingestion pipelines, and research logic.
-- PostgreSQL stores normalized competitive data, forecasts, model outputs, and evaluation results.
+The **current research model** replays a versioned snapshot of roughly 30,000
+completed, decisive series, merged with current database results. Teams are matched
+by VLR ID. Tied results are excluded; unseen teams start at 1500.
 
-## Research principles
+**Prospective forecasts** use evidence available before they are frozen. Their saved
+probabilities and provenance do not change when the research model updates. Only
+these forecasts contribute to prospective accuracy, Brier score and log loss.
 
-### No hindsight
+Most historical results lack original availability evidence. Research previews do
+not claim that their inputs or probabilities were known before those matches.
+Experimental models exist in the research code but have not been promoted.
 
-Every forecast is timestamped and evaluated using only information that existed before the match.
+See the [preview design](docs/decisions/004-current-research-preview.md) and
+[observation-time evaluation rules](docs/decisions/002-observation-time-research.md).
 
-### Calibration over confidence
+## Data pipeline
 
-A useful forecasting system should not simply pick winners. Predictions assigned a 70% probability should succeed approximately 70% of the time.
+Each collection saves the raw response and a timestamped observation. The scheduled
+cycle syncs upcoming matches, freezes eligible forecasts, collects completed results
+and scores saved forecasts. Dataset and model-run hashes link predictions to their
+inputs. Database constraints and an advisory lock protect against duplicate and
+overlapping runs.
 
-### Reproducibility
+## Tech stack
 
-Raw inputs, transformations, feature definitions, and model versions are preserved so results can be recreated and audited.
+Next.js, React, TypeScript, Tailwind · Python, FastAPI, SQLAlchemy, Alembic ·
+PostgreSQL · Docker · GitHub Actions
 
-### Domain knowledge as data
+## Running locally
 
-Competitive expertise is treated as something measurable. Human forecasts can be compared directly with statistical models to determine where experience adds predictive value.
+Requires Python 3.12, Node 24 and Docker. These commands use PowerShell.
 
-## Why ClutchQuant
+```powershell
+# Repository root: start local PostgreSQL
+docker compose up -d
 
-ClutchQuant combines full-stack engineering, data infrastructure, statistical research, and firsthand high-level Valorant experience. The project is informed by experience reaching the Top 25 of the North American ranked leaderboard and contributing to two LAN championship runs.
+cd apps/api
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -r requirements-dev.txt -c requirements.lock
+# Development defaults target the database in compose.yaml.
+# Set DATABASE_URL explicitly if using another database.
+.venv/Scripts/python.exe -m alembic current
+.venv/Scripts/python.exe -m alembic upgrade head
+.venv/Scripts/python.exe -m uvicorn app.main:app --reload
+```
 
-The goal is not to create another match-picks page. It is to build a serious research platform for understanding uncertainty, testing competitive intuition, and measuring whether esports expertise can produce a repeatable forecasting advantage.
+In another terminal:
+
+```powershell
+cd apps/web
+npm ci
+npm run dev
+```
+
+Open `http://localhost:3000`. The frontend defaults to the local API at
+`http://127.0.0.1:8000/api/v1`; override `API_URL` in `apps/web/.env.local` if needed.
+The bundled snapshot supplies research history. Upcoming matches require ingestion:
+from `apps/api`, run `.venv/Scripts/python.exe -m app.pipeline --once --demo-cycle --pages 1`.
+Never point a development command at the live database by accident.
+
+For worker operation, tests and evidence storage, see the [runbook](docs/runbook.md).
+
+## Deployment
+
+The [live demo](https://clutch-quant.vercel.app) uses Vercel Hobby, Render Free,
+Supabase Free Postgres/private Storage and scheduled GitHub Actions. Credentials
+live in provider settings and repository secrets, not source control.
+
+See [deployment setup and free-tier limits](docs/free-demo.md). Render can sleep;
+the first request may need a retry. Scheduled collection can be delayed or miss
+matches, and storage and runner quotas still apply.
+
+## Current status
+
+The public demo is live. The prospective pipeline is collecting data, but its
+verified sample is still small. Evaluation remains preliminary; the historical
+research dataset is not a substitute for prospective results.

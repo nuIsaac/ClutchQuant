@@ -13,7 +13,7 @@ The deployment target is Vercel Hobby (Next.js), Render Free Web Service
 GitHub Actions (short scheduled jobs). Use provider subdomains and HTTPS; no paid
 domain, VM, persistent Render worker, disk, or Render database is required.
 This is a personal, noncommercial portfolio demo, not production infrastructure.
-No resources have been provisioned. The local Compose worker remains supported.
+The [public demo is live](https://clutch-quant.vercel.app). The local Compose worker remains supported.
 
 ## Deployment order
 
@@ -122,8 +122,8 @@ missing-object or integrity errors fail closed; never prune evidence silently.
   objects to make a run succeed. Downloading a database alone is not a full backup.
 - [GitHub Actions](https://docs.github.com/en/billing/reference/product-usage-included)
   Free private repositories include 2,000 runner minutes/month shared with CI.
-  Eight jobs/day capped at six minutes use at most 1,488 minutes in a 31-day month
-  before manual runs/retries/CI. This is a budget bound, not measured job duration.
+  Eight jobs/day with the current 20-minute timeout can use up to 4,960 minutes in a 31-day month
+  before manual runs/retries/CI, exceeding the private-repository allowance. This is a budget bound, not measured job duration.
   Public standard runners are free. Keep spending at zero; exhausted quotas stop work.
 - [Schedules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows)
   run on the default branch, can be delayed/dropped, and public inactive repositories

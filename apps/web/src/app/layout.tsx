@@ -3,15 +3,13 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "ClutchQuant | Valorant forecasting",
-  description: "Recorded Valorant match probabilities, model comparisons, and quantitative research.",
+  description:
+    "Valorant match probabilities from historical data and versioned models.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className="h-full antialiased"
-    >
+    <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
