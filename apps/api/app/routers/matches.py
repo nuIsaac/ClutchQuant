@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session, aliased
 
 from app.dependencies import get_db
-from app.models import Forecast, Match, Team
+from app.models import Forecast, Match, Team, MatchSource
 from app.schemas import UpcomingMatchResponse, UpcomingForecastResponse, ForecastResponse
 
 
@@ -57,8 +57,13 @@ def list_upcoming_matches(
         .all()
     )
 
+    grouped_sources = {match.id: [] for match, _, _ in rows}
+    if grouped_sources:
+        for source in db.query(MatchSource).filter(MatchSource.match_id.in_(grouped_sources)):
+            grouped_sources[source.match_id].append(dict(source=source.source, external_id=source.external_id, source_url=source.source_url))
     return [
         UpcomingMatchResponse(
+            sources=grouped_sources[match.id],
             id=match.id,
             vlr_id=match.vlr_id,
             team1_id=match.team1_id,

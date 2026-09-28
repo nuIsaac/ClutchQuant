@@ -7,9 +7,8 @@ import httpx
 from bs4 import BeautifulSoup
 
 from app.database import SessionLocal
-from app.models import Match, MatchObservation, Team
+from app.models import Match, Team
 from app.ingestion.provenance import captured_soup, record_parse
-from app.artifacts import canonical_json, digest
 
 
 VLR_BASE_URL = "https://www.vlr.gg"
@@ -37,6 +36,8 @@ def fetch_page(client, url, retries=5):
             return soup
 
         except httpx.HTTPError as error:
+            if isinstance(error, httpx.HTTPStatusError) and error.response.status_code in (401, 403):
+                raise  # Access restrictions are not transient collection failures.
             if attempt == retries:
                 raise
 
@@ -197,7 +198,10 @@ def parse_match_soup(match_soup, vlr_id, event_name, stage):
         except ValueError:
             scheduled_at = None
 
+    notes = " ".join(n.get_text(" ", strip=True) for n in match_soup.select(".match-header-vs-note"))
+    format_match = re.search(r"\bbo([135])\b", notes, re.IGNORECASE)
     return {
+        "best_of": int(format_match.group(1)) if format_match else None,
         "vlr_id": vlr_id,
         "team1": team1,
         "team2": team2,
@@ -242,79 +246,8 @@ def get_or_create_team(db, team_data):
 
 
 def save_match(db, data):
-    evidence = data.get("evidence")
-    evidence_key = None
-    if evidence:
-        evidence_key = digest(canonical_json({
-            "retrieval": evidence, "vlr_match_id": data["vlr_id"], "parser": "vlr-match-v2",
-            "status": data["status"],
-        }))
-        existing = db.query(MatchObservation).filter_by(evidence_key=evidence_key).first()
-        if existing is not None:
-            return db.get(Match, existing.match_id)
-    team1 = get_or_create_team(
-        db,
-        data["team1"],
-    )
-
-    team2 = get_or_create_team(
-        db,
-        data["team2"],
-    )
-
-    match = (
-        db.query(Match)
-        .filter(
-            Match.vlr_id == data["vlr_id"]
-        )
-        .first()
-    )
-
-    if match is None:
-        match = Match(
-            vlr_id=data["vlr_id"],
-            team1_id=team1.id,
-            team2_id=team2.id,
-        )
-
-        db.add(match)
-
-    match.team1_id = team1.id
-    match.team2_id = team2.id
-
-    match.team1_score = data["team1_score"]
-    match.team2_score = data["team2_score"]
-
-    match.event_name = data["event_name"]
-    match.stage = data["stage"]
-    match.status = data["status"]
-    match.scheduled_at = data["scheduled_at"]
-
-    evidence = data.get("evidence")
-    if evidence is not None:
-        db.flush()
-        received_at = datetime.fromisoformat(evidence["received_at"])
-        db.add(MatchObservation(
-            match_id=match.id,
-            received_at=received_at,
-            ingested_at=datetime.now(timezone.utc),
-            raw_sha256=evidence["raw_sha256"],
-            source_url=evidence["source_url"],
-            evidence_key=evidence_key,
-            payload={
-                "vlr_match_id": data["vlr_id"],
-                "team1": data["team1"], "team2": data["team2"],
-                "parser_version": "vlr-match-v2", "parse_sha256": data.get("parse_sha256"),
-                "retrieval_sha256": evidence.get("retrieval_sha256"),
-                "listing_evidence": data.get("listing_evidence"),
-                "team1_id": team1.id, "team2_id": team2.id,
-                "team1_score": match.team1_score, "team2_score": match.team2_score,
-                "status": match.status,
-                "scheduled_at": match.scheduled_at.isoformat() if match.scheduled_at else None,
-                "event_name": match.event_name, "stage": match.stage,
-            },
-        ))
-    return match
+    from app.ingestion.resolution import save_source_match
+    return save_source_match(db, data)
 
 
 def already_complete(db, vlr_id):

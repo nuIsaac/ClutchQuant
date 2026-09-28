@@ -393,7 +393,16 @@ def get_or_create_player(db, player_data):
 
 
 def save_maps(db, match, maps):
+    from app.models import MatchSource, TeamSourceIdentity
+    source = db.query(MatchSource).filter_by(match_id=match.id, source="vlr").first()
+    source_team1 = (source.details.get("team1") or {}) if source else {}
+    external = source_team1.get("vlr_id") or source_team1.get("external_id")
+    identity = db.query(TeamSourceIdentity).filter_by(source="vlr", external_id=str(external)).first() if external else None
+    reversed_order = identity is not None and identity.team_id == match.team2_id
     for map_data in maps:
+        if reversed_order:
+            map_data = {**map_data, "team1_score": map_data["team2_score"], "team2_score": map_data["team1_score"],
+                        "players": [{**p, "team_number": 3 - p["team_number"]} for p in map_data["players"]]}
         match_map = (
             db.query(MatchMap)
             .filter(

@@ -27,6 +27,7 @@ services:
     build: ./apps/api
     command: ["python", "-m", "app.pipeline", "--interval-seconds", "300", "--pages", "1"]
     environment:
+      THESPIKE_EXPORT_PATH: ${THESPIKE_EXPORT_PATH:-}
       APP_ENV: production
       DATABASE_URL: ${DATABASE_URL:?Set the intended database URL}
       ARTIFACT_ROOT: /data/artifacts

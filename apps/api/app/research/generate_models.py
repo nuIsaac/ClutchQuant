@@ -3,6 +3,7 @@
 import argparse
 from datetime import datetime, timezone
 import json
+import logging
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -85,7 +86,7 @@ def generate(experimental=False, ensemble_report=None, *, prospective=False, max
                 or report["code"]["source_sha256"] != identity["source_sha256"]
                 or report["configurations"] != CONFIGS):
             raise ValueError("Ensemble requires experimental mode and supporting evidence for this exact implementation")
-    created,skipped = 0,0
+    created,skipped,duplicates = 0,0,0
     with SessionLocal() as db:
         # Prevent concurrent schedule/team changes while the batch snapshots
         # deadlines. Expensive training has already finished outside this lock.
@@ -114,6 +115,7 @@ def generate(experimental=False, ensemble_report=None, *, prospective=False, max
                     config = {**config,"source_key":source}
                 if db.scalar(select(Forecast.id).where(Forecast.match_id==match.id,Forecast.source_key==source)):
                     skipped += 1
+                    duplicates += 1
                     continue
                 made_at = datetime.now(timezone.utc)
                 if made_at >= utc(match.scheduled_at):
@@ -141,7 +143,8 @@ def generate(experimental=False, ensemble_report=None, *, prospective=False, max
                                           + ("experimental, not promoted" if name != "elo_v1" else "frozen Elo v1 formula")))
                 created += 1
         db.commit()
-    return {"status":"GENERATED","created":created,"skipped":skipped,"dataset_sha256":dataset_key}
+    logging.getLogger(__name__).info("FORECAST_SUMMARY created=%s skipped=%s duplicates_prevented=%s", created, skipped, duplicates)
+    return {"status":"GENERATED","created":created,"skipped":skipped,"duplicates_prevented":duplicates,"dataset_sha256":dataset_key}
 
 
 if __name__ == "__main__":

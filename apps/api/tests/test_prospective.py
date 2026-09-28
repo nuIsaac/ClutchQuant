@@ -30,7 +30,7 @@ def test_freeze_rejects_unsupported_schedule(change):
     assert schedule_evidence({"result_events":[event]},match,now,900) is None
 
 
-def test_pipeline_stops_after_collection_failure(monkeypatch):
+def test_pipeline_continues_after_collection_failure(monkeypatch):
     from app import pipeline
     class Guard:
         def __enter__(self): return self
@@ -44,8 +44,13 @@ def test_pipeline_stops_after_collection_failure(monkeypatch):
     monkeypatch.setattr(pipeline,"SessionLocal",DB)
     monkeypatch.setattr(pipeline,"write_json",lambda *args:"0"*64)
     monkeypatch.setattr(pipeline,"sync_recent_results",lambda pages:{"failed":1})
-    monkeypatch.setattr(pipeline,"generate",lambda *args,**kwargs:pytest.fail("Must not forecast after failure"))
-    assert pipeline.run_cycle()["status"] == "FAILED"
+    monkeypatch.setattr(pipeline,"sync_upcoming_matches",lambda pages:{"failed":0})
+    monkeypatch.setattr(pipeline,"generate",lambda *args,**kwargs:{"created":1})
+    monkeypatch.setattr(pipeline,"snapshot_current",lambda:("0"*64,{}))
+    monkeypatch.setattr(pipeline,"build_report",lambda *args:("0"*64,{"counts":{}}))
+    result = pipeline.run_cycle()
+    assert result["status"] == "PARTIAL"
+    assert result["steps"]["forecasts"]["created"] == 1
 
 
 def test_pipeline_skips_overlapping_run(monkeypatch):

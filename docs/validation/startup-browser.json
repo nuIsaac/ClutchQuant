@@ -1,0 +1,21 @@
+{
+  "scope": "Headless Chrome against production build, mocked API availability",
+  "results": [
+    {
+      "scenario": "20-second cold start",
+      "elapsedMs": 20651,
+      "requests": 6,
+      "passed": true
+    },
+    {
+      "scenario": "permanent outage",
+      "elapsedMs": 45202,
+      "requests": 10,
+      "passed": true
+    },
+    {
+      "scenario": "retry recovers to true empty",
+      "passed": true
+    }
+  ]
+}

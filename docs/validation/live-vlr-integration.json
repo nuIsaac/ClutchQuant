@@ -1,0 +1,359 @@
+{
+  "scope": "disposable schema; bundled history, not a production database copy",
+  "history_sha256": "dca025e8efb180958f2ee5c06c762f3f0758cdc4a54ab95722d08562f53887e2",
+  "migration_before": {
+    "tables": {
+      "matches": {
+        "count": 30299,
+        "sha256": "333e98275f685c22a77bbb4419587ab33aaa9013a3569586cf68b0c09978c70e"
+      },
+      "match_maps": {
+        "count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "player_map_stats": {
+        "count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "forecasts": {
+        "count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "model_runs": {
+        "count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "match_observations": {
+        "count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "orphans": {
+      "matches.team1_id": 0,
+      "matches.team2_id": 0,
+      "match_maps.match_id": 0,
+      "player_map_stats.match_map_id": 0,
+      "player_map_stats.player_id": 0,
+      "player_map_stats.team_id": 0,
+      "forecasts.match_id": 0,
+      "forecasts.team1_id": 0,
+      "forecasts.team2_id": 0,
+      "forecasts.model_run_id": 0
+    },
+    "distinct_match_ids": 30299,
+    "duplicate_forecast_groups": 0,
+    "potential_duplicate_match_groups": 0
+  },
+  "migration_after": {
+    "tables": {
+      "matches": {
+        "count": 30299,
+        "sha256": "333e98275f685c22a77bbb4419587ab33aaa9013a3569586cf68b0c09978c70e"
+      },
+      "match_maps": {
+        "count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "player_map_stats": {
+        "count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "forecasts": {
+        "count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "model_runs": {
+        "count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "match_observations": {
+        "count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "orphans": {
+      "matches.team1_id": 0,
+      "matches.team2_id": 0,
+      "match_maps.match_id": 0,
+      "player_map_stats.match_map_id": 0,
+      "player_map_stats.player_id": 0,
+      "player_map_stats.team_id": 0,
+      "forecasts.match_id": 0,
+      "forecasts.team1_id": 0,
+      "forecasts.team2_id": 0,
+      "forecasts.model_run_id": 0
+    },
+    "distinct_match_ids": 30299,
+    "duplicate_forecast_groups": 0,
+    "potential_duplicate_match_groups": 0
+  },
+  "backfilled_match_sources": 30299,
+  "model_baseline": {
+    "model": "frozen Elo v1",
+    "availability": "UNKNOWN; chronological diagnostic only, not prospective validation",
+    "matches": 30299,
+    "accuracy": 0.6450707944156573,
+    "brier": 0.22005263232883474,
+    "log_loss": 0.6300651361401524,
+    "period_start": "2020-04-25T14:00:00+00:00",
+    "period_end": "2026-09-15T05:00:00+00:00"
+  },
+  "runs": [
+    {
+      "ingestion": {
+        "sources": {
+          "vlr": {
+            "discovered": 8,
+            "saved": 8,
+            "failed": 0,
+            "created": 8,
+            "matched": 0,
+            "unresolved": 0,
+            "persistence_failures": 0,
+            "parse_failures": 0,
+            "attempted": 30,
+            "fetched": 30,
+            "parsed": 8,
+            "not_forecastable": 22,
+            "match_mappings_created": 8,
+            "team_mappings_created": 0
+          }
+        },
+        "saved": 8,
+        "failed": 0,
+        "unresolved": 0,
+        "created": 8,
+        "matched": 0,
+        "existing_canonical_matches": 30299,
+        "coverage": {
+          "upcoming": {
+            "canonical_total": 8,
+            "vlr_only": 8,
+            "thespike_only": 0,
+            "both": 0,
+            "unmapped": 0
+          },
+          "forecasts_awaiting_data": 8,
+          "recent_completed": {
+            "canonical_total": 0,
+            "vlr_only": 0,
+            "thespike_only": 0,
+            "both": 0,
+            "unmapped": 0
+          },
+          "open_issues": {}
+        },
+        "dry_run": false,
+        "duration_seconds": 34.875
+      },
+      "forecasts": {
+        "status": "GENERATED",
+        "created": 8,
+        "skipped": 0,
+        "duplicates_prevented": 0,
+        "dataset_sha256": "fe28141c706dbdff20d5265ccbf257d857e5604fb08bede7c633567ec911f21f"
+      },
+      "forecast_count": 8,
+      "seconds": 35.556
+    },
+    {
+      "ingestion": {
+        "sources": {
+          "vlr": {
+            "discovered": 8,
+            "saved": 8,
+            "failed": 0,
+            "created": 0,
+            "matched": 8,
+            "unresolved": 0,
+            "persistence_failures": 0,
+            "parse_failures": 0,
+            "attempted": 30,
+            "fetched": 30,
+            "parsed": 8,
+            "not_forecastable": 22,
+            "match_mappings_created": 0,
+            "team_mappings_created": 0
+          }
+        },
+        "saved": 8,
+        "failed": 0,
+        "unresolved": 0,
+        "created": 0,
+        "matched": 8,
+        "existing_canonical_matches": 30307,
+        "coverage": {
+          "upcoming": {
+            "canonical_total": 8,
+            "vlr_only": 8,
+            "thespike_only": 0,
+            "both": 0,
+            "unmapped": 0
+          },
+          "forecasts_awaiting_data": 0,
+          "recent_completed": {
+            "canonical_total": 0,
+            "vlr_only": 0,
+            "thespike_only": 0,
+            "both": 0,
+            "unmapped": 0
+          },
+          "open_issues": {}
+        },
+        "dry_run": false,
+        "duration_seconds": 33.989
+      },
+      "forecasts": {
+        "status": "GENERATED",
+        "created": 0,
+        "skipped": 8,
+        "duplicates_prevented": 8,
+        "dataset_sha256": "18d05431df2ed7b3806760eb7d1690829976dc6d57db09d5c2fbd03c50368952"
+      },
+      "forecast_count": 8,
+      "seconds": 34.716
+    }
+  ],
+  "api": {
+    "matches": 8,
+    "forecasts": 8,
+    "match_ids": [
+      30300,
+      30301,
+      30302,
+      30303,
+      30304,
+      30305,
+      30306,
+      30307
+    ],
+    "coverage": {
+      "upcoming": {
+        "canonical_total": 8,
+        "vlr_only": 8,
+        "thespike_only": 0,
+        "both": 0,
+        "unmapped": 0
+      },
+      "forecasts_awaiting_data": 0,
+      "recent_completed": {
+        "canonical_total": 0,
+        "vlr_only": 0,
+        "thespike_only": 0,
+        "both": 0,
+        "unmapped": 0
+      },
+      "open_issues": {}
+    },
+    "health": {
+      "observed_at": "2026-09-28T18:40:55.147436+00:00",
+      "scope": "last 100 scheduled pipeline receipts; disabled sources are not failures",
+      "last_attempt_at": "2026-09-28T14:40:19.846716-04:00",
+      "last_run_status": "SUCCEEDED",
+      "sources": {
+        "vlr": {
+          "status": "ok",
+          "last_attempt_at": "2026-09-28T14:40:19.846716-04:00",
+          "last_success_at": "2026-09-28T14:40:54.526252-04:00",
+          "age_seconds": 0.621184,
+          "counts": {
+            "discovered": 8,
+            "saved": 8,
+            "failed": 0,
+            "created": 0,
+            "matched": 8,
+            "unresolved": 0,
+            "persistence_failures": 0,
+            "parse_failures": 0,
+            "fetched": 30,
+            "parsed": 8,
+            "not_forecastable": 22,
+            "match_mappings_created": 0,
+            "team_mappings_created": 0
+          }
+        },
+        "thespike": {
+          "status": "disabled",
+          "last_attempt_at": null,
+          "last_success_at": null,
+          "age_seconds": null,
+          "counts": {}
+        }
+      },
+      "forecasts": {
+        "status": "GENERATED",
+        "created": 0,
+        "skipped": 8,
+        "duplicates_prevented": 8
+      },
+      "history": {
+        "matches": 30307,
+        "oldest_match_at": "2020-04-25T10:00:00-04:00",
+        "latest_match_at": "2026-10-02T04:00:00-04:00"
+      },
+      "coverage": {
+        "upcoming": {
+          "canonical_total": 8,
+          "vlr_only": 8,
+          "thespike_only": 0,
+          "both": 0,
+          "unmapped": 0
+        },
+        "forecasts_awaiting_data": 0,
+        "recent_completed": {
+          "canonical_total": 0,
+          "vlr_only": 0,
+          "thespike_only": 0,
+          "both": 0,
+          "unmapped": 0
+        },
+        "open_issues": {}
+      }
+    }
+  },
+  "final_integrity": {
+    "tables": {
+      "matches": {
+        "count": 30307,
+        "sha256": "879a01a6c423917b8b1077498e9e67ae96fb113806f42e9c0d52be9699f59858"
+      },
+      "match_maps": {
+        "count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "player_map_stats": {
+        "count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "forecasts": {
+        "count": 8,
+        "sha256": "de4522a6f8ce5ba5ce4e73d279e3525c89983052e9d542b5ae0fc0892c651021"
+      },
+      "model_runs": {
+        "count": 8,
+        "sha256": "1ba14a03a796f81be555ef23f7971329ca800db425967483fd9de87edd26101f"
+      },
+      "match_observations": {
+        "count": 16,
+        "sha256": "66226f7d57f0cf432573686ea13ca0cd6c925bdb3e27903b1f8b15fe79bf2a2e"
+      }
+    },
+    "orphans": {
+      "matches.team1_id": 0,
+      "matches.team2_id": 0,
+      "match_maps.match_id": 0,
+      "player_map_stats.match_map_id": 0,
+      "player_map_stats.player_id": 0,
+      "player_map_stats.team_id": 0,
+      "forecasts.match_id": 0,
+      "forecasts.team1_id": 0,
+      "forecasts.team2_id": 0,
+      "forecasts.model_run_id": 0
+    },
+    "distinct_match_ids": 30307,
+    "duplicate_forecast_groups": 0,
+    "potential_duplicate_match_groups": 0
+  },
+  "historical_match_rows_unchanged": true,
+  "recorded_at": "2026-09-28T18:40:55.331643+00:00"
+}

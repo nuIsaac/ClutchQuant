@@ -114,3 +114,14 @@ See [deployment setup and free-tier limits](docs/free-demo.md). Render can sleep
 the first request may need a retry. Scheduled collection can be delayed or miss
 matches, and storage and runner quotas still apply. Live round coverage depends on VLR;
 the integration is not a low-latency official data feed.
+
+## Multi-source coverage and startup recovery
+
+Upcoming ingestion now reconciles canonical entities through source mappings.
+VLR works through the existing parsers; the THESPIKE adapter accepts an authorized
+JSON export (live scraping is disabled pending authorized access). Existing IDs,
+forecasts and availability evidence are preserved. The frontend automatically
+recovers during backend cold starts and separates loading, empty and error states.
+See [configuration, reconciliation policy, dry runs and debugging](docs/multi-source.md).
+
+See the [engineering report and measured validation results](docs/implementation-report.md).

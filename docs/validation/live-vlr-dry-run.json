@@ -1,0 +1,37 @@
+{
+  "sources": {
+    "vlr": {
+      "discovered": 8,
+      "saved": 8,
+      "failed": 0
+    }
+  },
+  "saved": 8,
+  "failed": 0,
+  "unresolved": 0,
+  "created": 8,
+  "matched": 0,
+  "existing_canonical_matches": 0,
+  "coverage": {
+    "upcoming": {
+      "canonical_total": 8,
+      "vlr_only": 8,
+      "thespike_only": 0,
+      "both": 0,
+      "unmapped": 0
+    },
+    "forecasts_awaiting_data": 8,
+    "recent_completed": {
+      "canonical_total": 0,
+      "vlr_only": 0,
+      "thespike_only": 0,
+      "both": 0,
+      "unmapped": 0
+    },
+    "open_issues": {}
+  },
+  "dry_run": true,
+  "scope": "Live VLR, one listing page, empty disposable PostgreSQL database; not production coverage",
+  "thespike_live": "Blocked: HTTP 403; no authorized feed supplied",
+  "forecasts_generated": 0
+}

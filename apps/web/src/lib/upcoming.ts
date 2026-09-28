@@ -58,6 +58,7 @@ export function validPreview(value: unknown): value is ResearchPreview {
 }
 
 export type UpcomingMatch = {
+  sources?: { source: string; external_id: string; source_url: string }[];
   id: number;
   vlr_id: number | null;
   team1_id: number;
@@ -92,6 +93,7 @@ export function decodeMatches(value: unknown): UpcomingMatch[] {
       !Array.isArray(match.forecasts)
     )
       throw new Error("Invalid match response");
+    if (match.sources != null && (!Array.isArray(match.sources) || match.sources.some((s: { source?: unknown; external_id?: unknown; source_url?: unknown }) => !s || typeof s.source !== "string" || typeof s.external_id !== "string" || typeof s.source_url !== "string" || !/^https:\/\/(www\.)?(vlr|thespike)\.gg\//.test(s.source_url)))) throw new Error("Invalid source response");
     if (match.current_preview != null && !validPreview(match.current_preview))
       throw new Error("Invalid preview response");
     for (const forecast of match.forecasts) {

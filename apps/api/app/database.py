@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker
 from app.settings import DATABASE_URL
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True,
+                       connect_args={"connect_timeout": 5}, pool_timeout=5,
                        pool_size=int(os.getenv("DB_POOL_SIZE", "5")),
                        max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "10")))
 

@@ -1,0 +1,42 @@
+{
+  "sources": {
+    "vlr": {
+      "discovered": 2,
+      "saved": 2,
+      "failed": 0
+    },
+    "thespike": {
+      "discovered": 2,
+      "saved": 2,
+      "failed": 0
+    }
+  },
+  "saved": 4,
+  "failed": 0,
+  "unresolved": 0,
+  "created": 3,
+  "matched": 1,
+  "existing_canonical_matches": 0,
+  "coverage": {
+    "upcoming": {
+      "canonical_total": 3,
+      "vlr_only": 1,
+      "thespike_only": 1,
+      "both": 1,
+      "unmapped": 0
+    },
+    "forecasts_awaiting_data": 3,
+    "recent_completed": {
+      "canonical_total": 0,
+      "vlr_only": 0,
+      "thespike_only": 0,
+      "both": 0,
+      "unmapped": 0
+    },
+    "open_issues": {}
+  },
+  "dry_run": true,
+  "validation": "synthetic only; not live coverage",
+  "forecasts_generated": 3,
+  "duplicate_forecasts_generated": 0
+}
