@@ -122,7 +122,7 @@ missing-object or integrity errors fail closed; never prune evidence silently.
   objects to make a run succeed. Downloading a database alone is not a full backup.
 - [GitHub Actions](https://docs.github.com/en/billing/reference/product-usage-included)
   Free private repositories include 2,000 runner minutes/month shared with CI.
-  Eight jobs/day with the current 20-minute timeout can use up to 4,960 minutes in a 31-day month
+  Eight jobs/day with the current 30-minute timeout can use up to 7,440 minutes in a 31-day month
   before manual runs/retries/CI, exceeding the private-repository allowance. This is a budget bound, not measured job duration.
   Public standard runners are free. Keep spending at zero; exhausted quotas stop work.
 - [Schedules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows)
