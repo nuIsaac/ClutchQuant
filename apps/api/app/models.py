@@ -302,3 +302,51 @@ class ModelRun(Base):
     dataset_sha256: Mapped[str] = mapped_column(String(64))
     configuration: Mapped[dict] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class TeamSourceIdentity(Base):
+    __tablename__ = "team_source_identities"
+    __table_args__ = (UniqueConstraint("source", "external_id", name="uq_team_source_external"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), index=True)
+    source: Mapped[str] = mapped_column(String(30))
+    external_id: Mapped[str] = mapped_column(String(100))
+    external_name: Mapped[str] = mapped_column(String(100))
+
+
+class TeamAlias(Base):
+    __tablename__ = "team_aliases"
+    __table_args__ = (UniqueConstraint("team_id", "source", "normalized_alias", name="uq_team_alias"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+    source: Mapped[str] = mapped_column(String(30))
+    alias: Mapped[str] = mapped_column(String(100))
+    normalized_alias: Mapped[str] = mapped_column(String(100), index=True)
+
+
+class MatchSource(Base):
+    __tablename__ = "match_sources"
+    __table_args__ = (UniqueConstraint("source", "external_id", name="uq_match_source_external"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"), index=True)
+    source: Mapped[str] = mapped_column(String(30))
+    external_id: Mapped[str] = mapped_column(String(100))
+    source_url: Mapped[str] = mapped_column(String(1000))
+    # NULL for legacy data: migration time is not original discovery time.
+    first_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    details: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class SourceIssue(Base):
+    __tablename__ = "source_issues"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    issue_key: Mapped[str] = mapped_column(String(64), unique=True)
+    source: Mapped[str] = mapped_column(String(30))
+    external_id: Mapped[str] = mapped_column(String(100))
+    match_id: Mapped[int | None] = mapped_column(ForeignKey("matches.id"))
+    kind: Mapped[str] = mapped_column(String(40), index=True)
+    details: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

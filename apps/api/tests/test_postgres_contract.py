@@ -482,3 +482,79 @@ def test_prospective_freeze_score_and_retraction(migrated_connection,tmp_path,mo
     with pytest.raises(DBAPIError,match="append-only"):
         with migrated_connection.begin_nested():
             migrated_connection.execute(text("DELETE FROM pipeline_runs"))
+
+
+def test_source_migration_backfills_without_inventing_discovery(postgres_connection):
+    c = postgres_connection
+    config = migration_config(c)
+    command.upgrade(config, "b72c904e1a36")
+    c.execute(insert(Team), [{"id": 1, "vlr_id": 101, "name": "A"}, {"id": 2, "vlr_id": 102, "name": "B"}])
+    c.execute(insert(Match).values(id=1, vlr_id=900, team1_id=1, team2_id=2))
+    command.upgrade(config, "head")
+    assert c.execute(text("SELECT match_id, source, external_id, first_seen_at FROM match_sources")).one() == (1, "vlr", "900", None)
+    assert c.scalar(text("SELECT count(*) FROM team_source_identities")) == 2
+    command.downgrade(config, "b72c904e1a36")
+    assert c.scalar(text("SELECT vlr_id FROM matches WHERE id=1")) == 900
+
+
+def test_thespike_only_forecasts_dedup_and_temporal_availability(migrated_connection, tmp_path, monkeypatch):
+    from sqlalchemy.orm import Session
+    import app.artifacts as artifacts
+    from app.artifacts import write_bytes
+    from app.ingestion.resolution import save_source_match
+    from app.research import generate_models
+    from app.research.dataset import export_dataset
+    from app.models import MatchSource
+    monkeypatch.setattr(artifacts, "ARTIFACT_ROOT", tmp_path)
+    sessions = lambda: Session(bind=migrated_connection, join_transaction_mode="create_savepoint")
+    now = datetime.now(timezone.utc)
+    data = dict(source="thespike", external_id="148759", source_url="https://www.thespike.gg/test-fixture",
+        team1={"external_id":"111", "name":"PCIFIC Esports"}, team2={"external_id":"222", "name":"Fear Never Ends"},
+        scheduled_at=now + timedelta(hours=2), status="scheduled", event_name="Synthetic Monsters Reloaded", stage="Decider",
+        team1_score=None, team2_score=None,
+        evidence={"received_at": now.isoformat(), "raw_sha256": write_bytes("raw", b"synthetic upcoming only"), "source_url":"https://www.thespike.gg/test-fixture"})
+    with sessions() as db:
+        match = save_source_match(db, data)
+        mid = match.id
+        db.commit()
+        assert match.vlr_id is None
+    def snapshot():
+        with sessions() as db: return export_dataset(db, datetime.now(timezone.utc))
+    monkeypatch.setattr(generate_models, "snapshot_current", snapshot)
+    monkeypatch.setattr(generate_models, "SessionLocal", sessions)
+    assert generate_models.generate(prospective=True)["created"] == 1
+    with sessions() as db:
+        vlr = {**data, "source":"vlr", "external_id":"999", "team1":{"external_id":"1", "name":"PCIFIC Esports"}, "team2":{"external_id":"2", "name":"Fear Never Ends"}}
+        assert save_source_match(db, vlr).id == mid
+        db.commit()
+        assert db.query(Match).count() == 1
+        assert db.query(MatchSource).count() == 2
+    assert generate_models.generate(prospective=True)["created"] == 0
+    with sessions() as db:
+        assert db.query(Forecast).count() == 1
+        # A late imported result cannot appear in an earlier prediction snapshot.
+        historical = {**data, "external_id":"historical", "scheduled_at":now-timedelta(days=2),
+            "status":"completed", "team1_score":2, "team2_score":0,
+            "evidence":{**data["evidence"], "raw_sha256":write_bytes("raw", b"synthetic recent result")}}
+        save_source_match(db, historical)
+        db.commit()
+        _, before = export_dataset(db, now - timedelta(seconds=1))
+        assert before["result_events"] == []
+        _, after = export_dataset(db, datetime.now(timezone.utc))
+        result = next(r for r in after["result_events"] if r["status"] == "completed")
+        assert datetime.fromisoformat(result["result_observed_at"]) >= now
+
+
+def test_multi_source_dry_run_rolls_back(migrated_connection):
+    from sqlalchemy.orm import Session
+    from types import SimpleNamespace
+    from app.ingestion.multi_source import sync_sources
+    sessions = lambda: Session(bind=migrated_connection, join_transaction_mode="create_savepoint")
+    data = dict(source="thespike", external_id="fixture", team1={"external_id":"1", "name":"A"},
+                team2={"external_id":"2", "name":"B"}, scheduled_at=LOCK_TIME + timedelta(days=1000),
+                event_name="Synthetic", stage="Final", status="scheduled", team1_score=None, team2_score=None)
+    source = SimpleNamespace(name="thespike", discover_upcoming_matches=lambda pages: iter([data]))
+    result = sync_sources([source], dry_run=True, session_factory=sessions)
+    assert result["created"] == 1
+    assert migrated_connection.scalar(text("SELECT count(*) FROM matches")) == 0
+    assert migrated_connection.scalar(text("SELECT count(*) FROM teams")) == 0

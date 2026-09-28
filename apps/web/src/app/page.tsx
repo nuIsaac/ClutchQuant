@@ -1,14 +1,15 @@
+"use client";
 import Link from "next/link";
-import { loadUpcoming } from "@/lib/upcoming";
+import { useUpcoming } from "@/lib/use-upcoming";
 import { formatTime } from "@/lib/market";
 import MarketBoard from "./components/market-board";
 import { MetricCard } from "./components/market-primitives";
 import LiveBoard from "./components/live-board";
 
-const API_URL = process.env.API_URL ?? "http://127.0.0.1:8000/api/v1";
-export default async function Home() {
-  const upcoming = await loadUpcoming(API_URL);
-  const matches = upcoming.ok ? upcoming.matches : [];
+export default function Home() {
+  const state = useUpcoming();
+  const upcoming = { ok: state.data !== null };
+  const matches = state.data ?? [];
   const leaders = matches
     .filter((m) => m.current_preview)
     .sort(
@@ -40,7 +41,7 @@ export default async function Home() {
             ))}
           </nav>
           <div className="text-[10px] text-slate-500">
-            {upcoming.ok ? "Elo v1" : "Model unavailable"}
+            {upcoming.ok ? "Elo v1" : "Connecting to data service"}
           </div>
         </div>
       </header>
@@ -58,7 +59,7 @@ export default async function Home() {
             Model computed
             <br />
             <span className="text-slate-400">
-              {formatTime(history?.computed_at)}
+              {upcoming.ok ? formatTime(history?.computed_at) : "—"}
             </span>
           </p>
         </section>
@@ -69,7 +70,7 @@ export default async function Home() {
           <MetricCard
             label="Historical series"
             value={
-              history?.history_count.toLocaleString("en-US") ?? "Unavailable"
+              history?.history_count.toLocaleString("en-US") ?? "—"
             }
           />
           <MetricCard
@@ -77,7 +78,7 @@ export default async function Home() {
             value={
               upcoming.ok
                 ? String(matches.filter((m) => m.current_preview).length)
-                : "Unavailable"
+                : "—"
             }
           />
           <MetricCard
@@ -88,7 +89,7 @@ export default async function Home() {
                     new Set(matches.map((m) => m.event_name).filter(Boolean))
                       .size,
                   )
-                : "Unavailable"
+                : "—"
             }
           />
           <MetricCard label="Model" value="Elo v1" note="1500 prior / K = 32" />
@@ -101,23 +102,19 @@ export default async function Home() {
                 Eastern time · up to 100 matches
               </span>
             </div>
-            <LiveBoard />
+            {upcoming.ok && <LiveBoard />}
+            {state.stale && <p role="status" className="mt-3 text-xs text-amber-200">Showing cached data — {state.phase === "loading" ? "updating…" : "update unavailable. Retrying automatically."}</p>}
             {upcoming.ok ? (
               <MarketBoard matches={matches} />
             ) : (
-              <div
-                role="alert"
-                className="mt-4 rounded-lg bg-amber-950/30 p-6 text-sm text-amber-200"
-              >
-                {upcoming.error}
-                <form action="/" method="get">
-                  <button
-                    type="submit"
-                    className="mt-3 cursor-pointer underline"
-                  >
-                    Reload forecasts
-                  </button>
-                </form>
+              <div role={state.phase === "error" ? "alert" : "status"}
+                aria-live="polite" className="mt-4 rounded-lg bg-[#111722] p-6 text-sm text-slate-300">
+                {state.phase === "error" ? (
+                  <><p>Couldn&apos;t load match data.</p><button onClick={state.retry} className="mt-3 cursor-pointer underline">Retry</button></>
+                ) : (
+                  <><p className="animate-pulse">ClutchQuant is loading match data…</p>
+                  <p className="mt-2 text-xs text-slate-500">Connecting to the data service. Startup can take around 30 seconds; we&apos;ll retry automatically.</p></>
+                )}
               </div>
             )}
           </section>
@@ -145,7 +142,7 @@ export default async function Home() {
                 })}
                 {!leaders.length && (
                   <p className="py-3 text-xs text-slate-500">
-                    No current previews available.
+                    {upcoming.ok ? "No current previews available." : "Waiting for match data…"}
                   </p>
                 )}
               </div>

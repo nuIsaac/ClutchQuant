@@ -4,7 +4,14 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class SourceResponse(BaseModel):
+    source: str
+    external_id: str
+    source_url: str
+
+
 class UpcomingMatchResponse(BaseModel):
+    sources: list[SourceResponse] = Field(default_factory=list)
     id: int
     vlr_id: int | None
 

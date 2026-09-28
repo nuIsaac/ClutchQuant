@@ -11,7 +11,7 @@ from sqlalchemy import text, select
 
 from app.artifacts import write_json
 from app.database import engine, SessionLocal
-from app.ingestion.vlr_upcoming import sync_upcoming_matches
+from app.ingestion.multi_source import sync_upcoming_matches
 from app.ingestion.vlr_recent import sync_recent_results
 from app.models import PipelineRun
 from app.research.generate_models import generate, snapshot_current
@@ -35,10 +35,13 @@ def run_cycle(*, pages=1, experimental=False, collect=True, forecast_first=False
         try:
             write_json("jobs",{**details,"status":"STARTED"})
             def collect_step(name, job):
-                result = job()
+                try:
+                    result = job()
+                except Exception as error:
+                    logger.exception("Collection failed: operation=%s retry=next-cycle", name)
+                    result = {"failed": 1, "error_type": type(error).__name__}
                 details["steps"][name] = result
-                if result["failed"]:
-                    raise RuntimeError(f"{name} collection reported failures; cycle stopped")
+                # A failed source must not prevent other discovery or forecasts.
             if collect:
                 if not forecast_first:
                     collect_step("results",lambda:sync_recent_results(pages))
@@ -50,7 +53,7 @@ def run_cycle(*, pages=1, experimental=False, collect=True, forecast_first=False
             with SessionLocal() as db:
                 report_key,report = build_report(db,key,dataset)
             details["steps"]["scoring"] = {"report_sha256":report_key,"counts":report["counts"]}
-            status = "SUCCEEDED"
+            status = "PARTIAL" if any(v.get("failed") for v in details["steps"].values() if isinstance(v, dict)) else "SUCCEEDED"
         except Exception as error:
             logger.exception("Pipeline failed",extra={"run_id":run_id})
             details["error_type"] = type(error).__name__
@@ -98,7 +101,7 @@ def main():
                            forecast_first=args.demo_cycle)
         print(json.dumps(result),flush=True)
         if args.once:
-            raise SystemExit(1 if result["status"] == "FAILED" else 0)
+            raise SystemExit(1 if result["status"] in {"FAILED", "PARTIAL"} else 0)
         stop.wait(args.interval_seconds)
 
 

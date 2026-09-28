@@ -27,9 +27,10 @@ def current_rows(db):
                       .join(a, a.id == Match.team1_id).join(b, b.id == Match.team2_id))
     # None is an explicit retraction/unknown, so cloud corrections do not leave
     # an eligible historical version silently active.
-    return {m.vlr_id: [m.vlr_id, x, y, m.team1_score, m.team2_score,
-                      m.scheduled_at.isoformat()] if reason is None and x and y and x != y else None
-            for m, x, y, reason in rows if m.vlr_id is not None}
+    return {(m.vlr_id if m.vlr_id is not None else -m.id): [m.vlr_id if m.vlr_id is not None else -m.id,
+                      x if x is not None else -m.team1_id, y if y is not None else -m.team2_id, m.team1_score, m.team2_score,
+                      m.scheduled_at.isoformat()] if reason is None and m.team1_id != m.team2_id else None
+            for m, x, y, reason in rows}
 
 
 @lru_cache(maxsize=1)
@@ -70,7 +71,7 @@ def previews(db, matches):
     teams = dict(db.execute(select(Team.id, Team.vlr_id).where(Team.id.in_(ids))).all())
     result = {}
     for m in matches:
-        a, b = teams.get(m.team1_id), teams.get(m.team2_id)
+        a, b = teams.get(m.team1_id) or -m.team1_id, teams.get(m.team2_id) or -m.team2_id
         if not a or not b or a == b or not used:
             continue
         result[m.id] = dict(source_key=VERSION, team1_win_probability=expected_score(

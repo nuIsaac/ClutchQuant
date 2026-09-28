@@ -76,6 +76,8 @@ export function ForecastDetail({ match }: { match: UpcomingMatch }) {
           <summary className="cursor-pointer">
             Advanced · provenance &amp; evidence
           </summary>
+          <p className="mt-2">Sources: {match.sources?.map(s => s.source.toUpperCase()).join(" · ") || (match.vlr_id ? "VLR" : "Not recorded")}</p>
+          {match.sources?.map(s => <a key={s.source + s.external_id} href={s.source_url} target="_blank" rel="noreferrer" className="mr-3 inline-block text-violet-300 underline">{s.source.toUpperCase()} ↗</a>)}
           {p && (
             <p className="mt-2 break-all font-mono">
               {p.source_key}

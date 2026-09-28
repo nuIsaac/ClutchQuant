@@ -81,7 +81,9 @@ services:
     image: clutchquant-api:${RELEASE_TAG:?Set RELEASE_TAG}
     build: ./apps/api
     command: ["python", "-u", "-m", "app.pipeline", "--interval-seconds", "${WORKER_INTERVAL_SECONDS:-300}", "--pages", "${WORKER_PAGES:-1}"]
-    environment: *api-environment
+    environment:
+      <<: *api-environment
+      THESPIKE_EXPORT_PATH: ${THESPIKE_EXPORT_PATH:-}
     volumes:
       - ${DATA_DIR:?Set DATA_DIR}/artifacts:/data/artifacts
     depends_on:
