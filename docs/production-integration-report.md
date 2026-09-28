@@ -105,13 +105,13 @@ From `apps/web`:
 
 Deployment configuration contract and YAML parsing passed. Docker execution is blocked: this host has no `docker`, `dockerd` or `podman` executable and no system/user Docker socket. No new Docker infrastructure was installed.
 
-Browser checks against the production frontend build connected to the disposable database: normal live VLR success, no runtime console warnings/errors, and automatic recovery after a controlled 20-second delayed API restart were observed. A sustained outage produced the error/Retry state in a fresh tab while a previously loaded tab retained the real matches and displayed its cached-data notice. After the API returned, the fresh tab recovered through automatic background retry. See [browser checks](validation/integration-browser.json).
+Browser checks against the production frontend build connected to the disposable database: normal live VLR success, no runtime console warnings/errors, and automatic recovery after a controlled 20-second delayed API restart were observed. A sustained outage produced the error/Retry state in a fresh tab while a previously loaded tab retained the real matches and displayed its cached-data notice. After the API returned, the fresh tab recovered through automatic background retry and the cached tab automatically cleared its stale notice. Empty-category rendering and visible VLR source provenance also passed. See [browser checks](validation/integration-browser.json).
 
 ## Deployment access and rollout status
 
 The clean prior implementation checkpoint is commit `22885d1` on branch `integration/multi-source-production`. No force push or history rewrite occurred.
 
-A Git push dry run failed with `could not read Username for 'https://github.com': terminal prompts disabled`. No Git credential helper, GitHub token, SSH identity, cloud CLI credential file or production DATABASE_URL is available. Vercel and Render dashboards both opened at their login screens. The existing public deployment is healthy and remains untouched.
+Checkpoint `22885d1` and integration commit `8c5b3b7` were created locally. Both a dry run and the actual `git push -u origin integration/multi-source-production` failed with `could not read Username for 'https://github.com': terminal prompts disabled`. No Git credential helper, GitHub token, SSH identity, cloud CLI credential file or production DATABASE_URL is available. Vercel and Render dashboards both opened at their login screens. The existing public deployment is healthy and remains untouched.
 
 **The remaining rollout blocker is authenticated access to the existing GitHub/provider/database environment.** THESPIKE authorization is deliberately not a blocker for this VLR-backed rollout.
 

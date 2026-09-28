@@ -1,9 +1,31 @@
 {
   "scope": "Updated production frontend build, isolated PostgreSQL history and real persisted VLR matches; not a production deployment",
-  "normal_success": {"matches": 8, "runtime_console_warnings_or_errors": 0},
-  "controlled_api_restart": {"restart_delay_seconds": 20, "loading_seen": true, "automatically_recovered": true},
-  "sustained_outage": {"initial_loading_seen": true, "error_and_retry_button_seen": true},
-  "cached_refresh_failure": {"cached_data_notice_seen": true, "previous_real_matches_retained": true},
-  "post_outage": {"fresh_error_tab_recovered_automatically": true},
-  "production_before_changes": {"matches": 8, "runtime_console_warnings_or_errors": 0, "deployed_revision": "3e5aa9bb6bb5804879348affc163d7f8d81d7f73"}
+  "normal_success": {
+    "matches": 8,
+    "runtime_console_warnings_or_errors": 0
+  },
+  "controlled_api_restart": {
+    "restart_delay_seconds": 20,
+    "loading_seen": true,
+    "automatically_recovered": true
+  },
+  "sustained_outage": {
+    "initial_loading_seen": true,
+    "error_and_retry_button_seen": true
+  },
+  "cached_refresh_failure": {
+    "cached_data_notice_seen": true,
+    "previous_real_matches_retained": true
+  },
+  "post_outage": {
+    "fresh_error_tab_recovered_automatically": true,
+    "cached_notice_cleared_automatically": true
+  },
+  "production_before_changes": {
+    "matches": 8,
+    "runtime_console_warnings_or_errors": 0,
+    "deployed_revision": "3e5aa9bb6bb5804879348affc163d7f8d81d7f73"
+  },
+  "empty_category_after_success": true,
+  "vlr_provenance_visible": true
 }
