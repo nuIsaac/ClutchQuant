@@ -55,6 +55,38 @@ def upgrade():
                          'https://www.vlr.gg/' || CAST(vlr_id AS VARCHAR),
                          '{"legacy": true}'::json FROM matches WHERE vlr_id IS NOT NULL""")
 
+    # Supabase may grant new public tables to anon/authenticated by default.
+    # Secure new tables atomically with creation; reuse existing roles only.
+    op.execute("""
+    DO $$
+    DECLARE tab text; role_name text; ns text := current_schema();
+    BEGIN
+      FOREACH tab IN ARRAY ARRAY['team_source_identities','team_aliases','match_sources','source_issues'] LOOP
+        EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', ns, tab);
+        EXECUTE format('REVOKE ALL ON %I.%I FROM PUBLIC', ns, tab);
+        FOREACH role_name IN ARRAY ARRAY['anon','authenticated'] LOOP
+          IF EXISTS (SELECT FROM pg_roles WHERE rolname = role_name) THEN
+            EXECUTE format('REVOKE ALL ON %I.%I FROM %I', ns, tab, role_name);
+          END IF;
+        END LOOP;
+        IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'cq_demo_api') THEN
+          EXECUTE format('GRANT SELECT ON %I.%I TO cq_demo_api', ns, tab);
+          EXECUTE format('CREATE POLICY cq_demo_read ON %I.%I FOR SELECT TO cq_demo_api USING (true)', ns, tab);
+        END IF;
+        IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'cq_app') THEN
+          EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON %I.%I TO cq_app', ns, tab);
+          EXECUTE format('CREATE POLICY cq_app_write ON %I.%I TO cq_app USING (true) WITH CHECK (true)', ns, tab);
+          EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE %I.%I TO cq_app', ns, tab || '_id_seq');
+        END IF;
+        IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'cq_demo_worker') THEN
+          EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON %I.%I TO cq_demo_worker', ns, tab);
+          EXECUTE format('CREATE POLICY cq_demo_write ON %I.%I TO cq_demo_worker USING (true) WITH CHECK (true)', ns, tab);
+          EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE %I.%I TO cq_demo_worker', ns, tab || '_id_seq');
+        END IF;
+      END LOOP;
+    END $$;
+    """)
+
 
 def downgrade():
     # Export these provenance tables before an intentional downgrade.

@@ -185,3 +185,34 @@ def test_unknown_legacy_identity_not_claimed_by_name(db):
     with pytest.raises(UnresolvedTeam, match="explicit identity review"):
         resolve_team(db, "vlr", {"external_id":"123", "name":unknown.name})
     assert unknown.vlr_id is None
+
+
+def test_vlr_bad_record_does_not_discard_other_matches(db, monkeypatch):
+    from bs4 import BeautifulSoup
+    from app.data_sources import vlr
+    from app.ingestion.multi_source import sync_sources
+    monkeypatch.setattr(vlr.time, 'sleep', lambda *_:None)
+    monkeypatch.setattr(vlr, 'fetch_page', lambda *a,**k:BeautifulSoup('<a class="wf-module-item match-item" href="/101/bad"></a><a class="wf-module-item match-item" href="/100/good"></a>','html.parser'))
+    def parse(client, card):
+        if 'bad' in card['href']:raise ValueError('Malformed upstream fixture')
+        return record()
+    monkeypatch.setattr(vlr, 'parse_upcoming_match',parse)
+    result=sync_sources([vlr.VlrSource()],session_factory=lambda:Session(db.bind))
+    assert result['saved']==1 and result['failed']==1
+    assert result['sources']['vlr']['parse_failures']==1
+    assert result['sources']['vlr']['match_mappings_created']==1
+    assert result['sources']['vlr']['team_mappings_created']==2
+
+
+def test_vlr_missing_listing_markup_is_not_successful_empty(monkeypatch):
+    from bs4 import BeautifulSoup
+    from app.data_sources import vlr
+    monkeypatch.setattr(vlr,'fetch_page',lambda *a,**k:BeautifulSoup('<p>Unavailable</p>','html.parser'))
+    with pytest.raises(ValueError,match='cannot establish coverage'):
+        list(vlr.VlrSource().discover_upcoming_matches())
+
+
+def test_thespike_disabled_does_not_fail_vlr_configuration(monkeypatch):
+    from app.ingestion.multi_source import configured_sources
+    monkeypatch.delenv('THESPIKE_EXPORT_PATH',raising=False)
+    assert [s.name for s in configured_sources()]==['vlr']

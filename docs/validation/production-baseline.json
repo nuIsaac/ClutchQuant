@@ -1,0 +1,71 @@
+{
+  "deployed_commit": "3e5aa9bb6bb5804879348affc163d7f8d81d7f73",
+  "deployments": [
+    {
+      "deployment_id": 6462070578,
+      "statuses": [
+        {
+          "state": "success",
+          "environment_url": "https://clutch-quant-my7326aqv-nuisaac.vercel.app",
+          "created_at": "2026-09-15T15:13:03Z"
+        }
+      ]
+    },
+    {
+      "deployment_id": 6462063435,
+      "statuses": [
+        {
+          "state": "success",
+          "environment_url": "https://clutchquant-api-demo.onrender.com",
+          "created_at": "2026-09-15T15:13:13Z"
+        }
+      ]
+    }
+  ],
+  "api_before": {
+    "/health": {
+      "http_status": 200,
+      "seconds": 0.354,
+      "response": {
+        "status": "ok",
+        "service": "clutchquant-api",
+        "version": "0.1.0"
+      }
+    },
+    "/ready": {
+      "http_status": 200,
+      "seconds": 0.442,
+      "response": {
+        "status": "ready",
+        "database": "connected",
+        "revision": "b72c904e1a36"
+      }
+    },
+    "/matches/upcoming/forecasts": {
+      "http_status": 200,
+      "seconds": 1.229,
+      "matches": 8,
+      "match_ids": [
+        82,
+        84,
+        86,
+        88,
+        83,
+        85,
+        87,
+        89
+      ],
+      "forecasts": 8,
+      "previews": 8
+    },
+    "/data/coverage": {
+      "http_status": 404,
+      "seconds": 0.142
+    },
+    "/data/health": {
+      "http_status": 404,
+      "seconds": 0.124
+    }
+  },
+  "scope": "Read-only inspection of existing production; no deployment performed"
+}

@@ -34,7 +34,7 @@ The [public demo is live](https://clutch-quant.vercel.app). The local Compose wo
 4. From `apps/api`, install `requirements.txt` constrained by `requirements.lock`.
    Using the admin connection, inspect `alembic current` and `alembic heads`, run
    `alembic upgrade head`, then `alembic current` and `alembic check`. Expected
-   current repository head: `b72c904e1a36`. Stop on unexpected revisions/errors.
+   current repository head: `c81d930a642f` (source provenance integration). Stop on unexpected revisions/errors.
    Migrations are an explicit operator step, never API or cron startup behavior.
 5. Run `deploy/supabase-demo.sql` as project postgres against this new demo only.
    Assign LOGIN and unique passwords to `cq_demo_api` and `cq_demo_worker` in a

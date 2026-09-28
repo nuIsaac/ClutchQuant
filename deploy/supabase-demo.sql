@@ -17,7 +17,8 @@ DECLARE tab text;
 BEGIN
   FOREACH tab IN ARRAY ARRAY['teams','players','matches','match_maps',
     'player_map_stats','forecasts','match_observations','model_runs',
-    'pipeline_runs','alembic_version'] LOOP
+    'pipeline_runs','alembic_version','team_source_identities','team_aliases',
+    'match_sources','source_issues'] LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', tab);
     EXECUTE format('REVOKE ALL ON public.%I FROM PUBLIC', tab);
     IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') THEN

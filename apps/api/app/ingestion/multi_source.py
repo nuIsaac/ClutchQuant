@@ -4,9 +4,10 @@ from datetime import datetime, timedelta, timezone
 import json
 import logging
 import os
+import time
 from sqlalchemy import select, func
 from app.database import SessionLocal
-from app.models import Match, MatchSource, SourceIssue, Forecast
+from app.models import Match, MatchSource, SourceIssue, Forecast, TeamSourceIdentity
 from app.ingestion.resolution import save_source_match, UnresolvedTeam, issue
 
 log = logging.getLogger(__name__)
@@ -37,11 +38,17 @@ def coverage(db):
 
 
 def sync_sources(sources, *, pages=1, dry_run=False, session_factory=SessionLocal):
+    sources = list(sources)
+    started = time.monotonic()
+    log.info("INGESTION_START sources=%s dry_run=%s", [s.name for s in sources], dry_run)
     report = {"sources": {}, "saved": 0, "failed": 0, "unresolved": 0, "created": 0, "matched": 0}
     with session_factory() as db:
         report["existing_canonical_matches"] = db.scalar(select(func.count()).select_from(Match))
         for source in sources:
-            counts = {"discovered": 0, "saved": 0, "failed": 0}
+            counts = {"discovered": 0, "saved": 0, "failed": 0, "created": 0, "matched": 0,
+                      "unresolved": 0, "persistence_failures": 0, "parse_failures": 0}
+            mapping_before = db.scalar(select(func.count()).select_from(MatchSource).where(MatchSource.source == source.name))
+            team_mapping_before = db.scalar(select(func.count()).select_from(TeamSourceIdentity).where(TeamSourceIdentity.source == source.name))
             report["sources"][source.name] = counts
             try:
                 for data in source.discover_upcoming_matches(pages):
@@ -49,6 +56,7 @@ def sync_sources(sources, *, pages=1, dry_run=False, session_factory=SessionLoca
                     external = str(data.get("external_id") or data.get("vlr_id") or "unknown")
                     if data.get("collection_error"):
                         counts["failed"] += 1
+                        counts["parse_failures"] += 1
                         report["failed"] += 1
                         issue(db, source.name, external, "INGESTION_FAILURE", {"operation": "fetch_match", "exception": data["collection_error"], "retry": "next cycle"})
                         continue
@@ -57,13 +65,17 @@ def sync_sources(sources, *, pages=1, dry_run=False, session_factory=SessionLoca
                         with db.begin_nested():
                             save_source_match(db, data)
                         after = db.scalar(select(func.count()).select_from(Match))
-                        report["created" if after > before else "matched"] += 1
+                        outcome = "created" if after > before else "matched"
+                        report[outcome] += 1
+                        counts[outcome] += 1
                         counts["saved"] += 1
                         report["saved"] += 1
                     except UnresolvedTeam as error:
                         report["unresolved"] += 1
+                        counts["unresolved"] += 1
                         issue(db, source.name, external, "UNRESOLVED_TEAM", {"reason": str(error)})
                     except Exception as error:
+                        counts["persistence_failures"] += 1
                         counts["failed"] += 1
                         report["failed"] += 1
                         issue(db, source.name, external, "INGESTION_FAILURE", {"operation": "resolve", "exception": type(error).__name__, "retry": "next cycle"})
@@ -71,7 +83,10 @@ def sync_sources(sources, *, pages=1, dry_run=False, session_factory=SessionLoca
                 counts["failed"] += 1
                 report["failed"] += 1
                 issue(db, source.name, "discovery", "INGESTION_FAILURE", {"operation": "discover", "exception": type(error).__name__, "retry": "next cycle"})
-            log.info("[%s] discovered=%s saved=%s failed=%s", source.name.upper(), counts["discovered"], counts["saved"], counts["failed"])
+            counts.update(getattr(source, "metrics", {}))
+            counts["match_mappings_created"] = db.scalar(select(func.count()).select_from(MatchSource).where(MatchSource.source == source.name)) - mapping_before
+            counts["team_mappings_created"] = db.scalar(select(func.count()).select_from(TeamSourceIdentity).where(TeamSourceIdentity.source == source.name)) - team_mapping_before
+            log.info("SOURCE_SUMMARY source=%s counts=%s", source.name, json.dumps(counts, sort_keys=True))
         db.flush()
         report["coverage"] = coverage(db)
         report["dry_run"] = dry_run
@@ -79,6 +94,8 @@ def sync_sources(sources, *, pages=1, dry_run=False, session_factory=SessionLoca
             db.rollback()
         else:
             db.commit()
+    report["duration_seconds"] = round(time.monotonic() - started, 3)
+    log.info("INGESTION_END saved=%s failed=%s unmatched=%s duration_seconds=%s", report["saved"], report["failed"], report["unresolved"], report["duration_seconds"])
     return report
 
 
@@ -91,7 +108,7 @@ def configured_sources(selection="all"):
     if selection == "thespike" or (selection == "all" and os.getenv("THESPIKE_EXPORT_PATH")):
         sources.append(ThespikeSource())
     if selection == "all" and not os.getenv("THESPIKE_EXPORT_PATH"):
-        log.warning("[THESPIKE] disabled: authorized export not configured")
+        log.info("[THESPIKE] disabled: authorized export not configured")
     return sources
 
 
@@ -108,6 +125,7 @@ def main():
     if not 1 <= args.pages <= 10:
         parser.error("pages must be 1..10")
     logging.basicConfig(level=logging.INFO)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     result = sync_sources(configured_sources(args.source), pages=args.pages, dry_run=args.dry_run)
     print(json.dumps(result, indent=2))
     raise SystemExit(1 if result["failed"] else 0)

@@ -1,5 +1,13 @@
 # Multi-source and startup engineering report
 
+## Latest integration verification — 2026-09-28
+
+The existing Vercel/Render deployment was inspected and remains healthy at `3e5aa9b` / migration `b72c904e1a36`. The integration now passes **200 backend tests and 24 frontend tests**, plus lint/typecheck/build. A real VLR persistence/forecast/API run created **8 matches and 8 forecasts**; rerunning created **0 duplicate matches, mappings or forecasts**. The migration preserved **30,299 bundled historical matches** byte-for-byte. Production was **not migrated or redeployed** because GitHub/provider/database credentials are unavailable in this session.
+
+See the [production integration report](production-integration-report.md) for actual counts, role-security fixes, lightweight data health, existing deployment evidence, access blockers and rollback. Earlier checkpoint results below are retained for context.
+
+Earlier implementation/deployment evidence is preserved in [the pre-integration report](implementation-report-before-multi-source.md).
+
 Status: implemented and validated locally; **live THESPIKE collection and production rollout remain blocked/not performed**. Repository: `/home/isaac/Projects/ClutchQuant`.
 
 ## What changed

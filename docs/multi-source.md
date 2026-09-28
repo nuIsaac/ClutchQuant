@@ -165,3 +165,5 @@ table make readiness fail. Render's wake-up behavior itself was not changed.
 
 Run backend tests with an isolated `TEST_DATABASE_URL`, plus `npm test`,
 `npm run lint`, `npm run typecheck` and `npm run build` in `apps/web`.
+
+Production integration now includes `/api/v1/data/health` and atomic RLS/runtime-role grants for new tables. See [the measured production integration report](production-integration-report.md).

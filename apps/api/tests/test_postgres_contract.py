@@ -558,3 +558,46 @@ def test_multi_source_dry_run_rolls_back(migrated_connection):
     assert result["created"] == 1
     assert migrated_connection.scalar(text("SELECT count(*) FROM matches")) == 0
     assert migrated_connection.scalar(text("SELECT count(*) FROM teams")) == 0
+
+
+def test_source_tables_reuse_production_roles_and_block_public_access(postgres_connection):
+    c = postgres_connection
+    config = migration_config(c)
+    command.upgrade(config, "b72c904e1a36")
+    for role in ("cq_demo_api", "cq_demo_worker", "cq_app", "anon", "authenticated"):
+        if not c.scalar(text("SELECT 1 FROM pg_roles WHERE rolname=:role"), {"role":role}):
+            c.exec_driver_sql(f'CREATE ROLE "{role}" NOLOGIN')
+    command.upgrade(config, "head")
+    schema = c.scalar(text("SELECT current_schema()"))
+    for table in ("match_sources", "team_source_identities", "team_aliases", "source_issues"):
+        qualified = f'{schema}.{table}'
+        assert c.scalar(text("SELECT relrowsecurity FROM pg_class WHERE oid=CAST(:tab AS regclass)"), {"tab":qualified})
+        assert c.scalar(text("SELECT has_table_privilege('cq_demo_api',:tab,'SELECT')"), {"tab":qualified})
+        assert not c.scalar(text("SELECT has_table_privilege('cq_demo_api',:tab,'INSERT')"), {"tab":qualified})
+        assert c.scalar(text("SELECT has_table_privilege('cq_demo_worker',:tab,'INSERT')"), {"tab":qualified})
+        assert c.scalar(text("SELECT has_table_privilege('cq_app',:tab,'INSERT')"), {"tab":qualified})
+        assert not c.scalar(text("SELECT has_table_privilege('anon',:tab,'SELECT')"), {"tab":qualified})
+        assert not c.scalar(text("SELECT has_table_privilege('authenticated',:tab,'SELECT')"), {"tab":qualified})
+        assert c.scalar(text("SELECT count(*) FROM pg_policies WHERE schemaname=:ns AND tablename=:tab"), {"ns":schema,"tab":table}) == 3
+
+
+def test_source_migration_preserves_all_historical_relationships(postgres_connection):
+    from app.models import MatchMap, PlayerMapStat
+    c = postgres_connection
+    config = migration_config(c)
+    command.upgrade(config, "b72c904e1a36")
+    c.execute(insert(Team), [{"id":1,"vlr_id":11,"name":"A"},{"id":2,"vlr_id":22,"name":"B"}])
+    c.execute(insert(Player).values(id=1,vlr_id=33,handle="historical-player"))
+    c.execute(insert(Match).values(id=1,vlr_id=44,team1_id=1,team2_id=2,status="completed",team1_score=2,team2_score=0,scheduled_at=LOCK_TIME))
+    c.execute(insert(MatchMap).values(id=1,vlr_game_id=55,match_id=1,map_number=1,map_name="Ascent",team1_score=13,team2_score=5))
+    c.execute(insert(PlayerMapStat).values(id=1,match_map_id=1,player_id=1,team_id=1,kills_all=20,deaths_all=10))
+    c.execute(insert(ModelRun).values(id="a"*64,source_key="model:elo:v1",dataset_sha256="b"*64,configuration={},created_at=CREATED_AT))
+    c.execute(insert(Forecast).values(id=1,match_id=1,team1_id=1,team2_id=2,source_type="model",source_key="model:elo:v1",team1_win_probability=.6,created_at=CREATED_AT,lock_time=LOCK_TIME,model_run_id="a"*64))
+    tables=("teams","players","matches","match_maps","player_map_stats","forecasts","model_runs")
+    before={t:c.execute(text(f'SELECT * FROM {t} ORDER BY id')).all() for t in tables}
+    command.upgrade(config,"head")
+    command.upgrade(config,"head")
+    after={t:c.execute(text(f'SELECT * FROM {t} ORDER BY id')).all() for t in tables}
+    assert after == before
+    assert c.scalar(text('SELECT count(*) FROM match_sources')) == 1
+    assert c.scalar(text('SELECT count(*) FROM team_source_identities')) == 2

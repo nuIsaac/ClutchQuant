@@ -26,6 +26,7 @@ def run_cycle(*, pages=1, experimental=False, collect=True, forecast_first=False
     run_id = uuid4().hex
     details = {"run_id":run_id,"started_at":started.isoformat(),"collection_enabled":collect,
                "order":"forecast-first" if forecast_first else "results-first","steps":{}}
+    logger.info("PIPELINE_START run_id=%s collection_enabled=%s", run_id, collect)
     report_key = None
     status = "FAILED"
     # Session advisory lock spans the whole cycle, across independent transactions.
@@ -62,6 +63,7 @@ def run_cycle(*, pages=1, experimental=False, collect=True, forecast_first=False
             try:
                 finished = datetime.now(timezone.utc)
                 details.update(status=status,finished_at=finished.isoformat())
+                logger.info("PIPELINE_END run_id=%s status=%s duration_seconds=%.3f", run_id, status, (finished-started).total_seconds())
                 write_json("jobs",details)
                 with SessionLocal() as db:
                     db.add(PipelineRun(id=run_id,started_at=started,finished_at=finished,
@@ -93,6 +95,7 @@ def main():
     if not 1 <= args.pages <= 10 or args.interval_seconds < 60:
         parser.error("pages must be 1..10 and interval at least 60 seconds")
     logging.basicConfig(level=logging.INFO)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     stop = threading.Event()
     for sig in (signal.SIGINT,signal.SIGTERM):
         signal.signal(sig,lambda *_:stop.set())
