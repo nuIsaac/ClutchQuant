@@ -66,14 +66,14 @@ export default function LiveBoard() {
       {failed || data?.source_status === "unavailable" ? (
         <p
           role="status"
-          className="rounded bg-slate-900 p-3 text-xs text-slate-400"
+          className="live-message"
         >
           Live feed temporarily unavailable.
         </p>
       ) : !data ? (
-        <p className="p-3 text-xs text-slate-500">Checking live matches…</p>
+        <p className="live-message">Checking live matches…</p>
       ) : data.items.length === 0 ? (
-        <p className="rounded bg-slate-900/50 p-3 text-xs text-slate-500">
+        <p className="live-message">
           {data.active_listed
             ? "Live matches reported; waiting for usable scores."
             : "No live matches reported by the source."}
