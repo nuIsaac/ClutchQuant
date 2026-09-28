@@ -104,3 +104,62 @@ def test_cycle_order(monkeypatch, demo, expected):
     monkeypatch.setattr(pipeline, "build_report", score)
     assert pipeline.run_cycle(forecast_first=demo)["status"] == "SUCCEEDED"
     assert steps == expected
+
+
+def test_transient_download_retries_without_exposing_transport_details(remote, monkeypatch):
+    delays = []
+    monkeypatch.setattr(artifacts.time, "sleep", delays.append)
+    content = b"verified evidence"
+    responses = iter([httpx.ReadTimeout("sensitive transport details"),
+                      httpx.Response(429, headers={"retry-after": "5"}),
+                      httpx.Response(200, content=gzip.compress(content))])
+    def request(*args, **kwargs):
+        response = next(responses)
+        if isinstance(response, Exception):
+            raise response
+        return response
+    monkeypatch.setattr(artifacts.httpx, "request", request)
+    assert artifacts.remote_read("raw", artifacts.digest(content)) == content
+    assert delays == [1, 5]
+
+
+def test_uncertain_upload_verifies_conflict_instead_of_overwriting(remote, monkeypatch):
+    original = artifacts.httpx.request
+    attempts = []
+    monkeypatch.setattr(artifacts.time, "sleep", lambda _: None)
+    def request(method, url, **kwargs):
+        attempts.append(method)
+        response = original(method, url, **kwargs)
+        if len(attempts) == 1:
+            raise httpx.ReadTimeout("response lost after write")
+        return response
+    monkeypatch.setattr(artifacts.httpx, "request", request)
+    content = b"immutable evidence"
+    assert artifacts.write_bytes("raw", content) == artifacts.digest(content)
+    assert attempts == ["POST", "POST", "GET"]
+    assert len(remote) == 1
+
+
+@pytest.mark.parametrize("failure", [429, 503, "timeout"])
+def test_retries_are_bounded_and_failure_never_caches(remote, monkeypatch, failure):
+    attempts, delays = [], []
+    monkeypatch.setattr(artifacts.time, "sleep", delays.append)
+    def request(*args, **kwargs):
+        attempts.append(1)
+        if failure == "timeout":
+            raise httpx.ReadTimeout("secret detail")
+        return httpx.Response(failure, headers={"retry-after": "3600"})
+    monkeypatch.setattr(artifacts.httpx, "request", request)
+    with pytest.raises(RuntimeError) as error:
+        artifacts.write_bytes("raw", b"evidence")
+    assert "secret" not in str(error.value)
+    assert len(attempts) == 4
+    assert len(delays) == 3 and max(delays) <= 30
+    assert not artifacts.artifact_path("raw", artifacts.digest(b"evidence")).exists()
+
+
+@pytest.mark.parametrize("status", [401, 403, 404, 507])
+def test_permanent_storage_errors_do_not_retry(remote, monkeypatch, status):
+    monkeypatch.setattr(artifacts.time, "sleep", lambda _: pytest.fail("Permanent error retried"))
+    monkeypatch.setattr(artifacts.httpx, "request", lambda *a, **k: httpx.Response(status))
+    assert artifacts.remote_request("GET", "raw", "a" * 64).status_code == status

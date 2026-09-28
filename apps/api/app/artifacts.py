@@ -8,6 +8,9 @@ import hashlib
 import json
 import re
 import gzip
+import time
+from email.utils import parsedate_to_datetime
+from datetime import datetime, timezone
 
 import httpx
 
@@ -68,7 +71,36 @@ def remote_request(method, kind, key, *, content=None):
     headers = {"Authorization":f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
                "apikey":SUPABASE_SERVICE_ROLE_KEY,"Content-Type":"application/gzip","x-upsert":"false"}
     # Never include response bodies, credentials, or signed URLs in error messages.
-    return httpx.request(method,url,headers=headers,content=content,timeout=30,follow_redirects=False)
+    # Content-addressed POSTs use no upsert. If a response was lost after a
+    # successful upload, the retry returns a conflict and write_bytes verifies
+    # the existing bytes before allowing a database reference.
+    for attempt in range(4):
+        response = None
+        try:
+            response = httpx.request(method, url, headers=headers, content=content,
+                                     timeout=30, follow_redirects=False)
+        except httpx.TransportError:
+            if attempt == 3:
+                raise RuntimeError("Artifact storage transport failed after 4 attempts") from None
+        else:
+            if response.status_code not in (408, 429, 500, 502, 503, 504) or attempt == 3:
+                return response
+        delay = 2 ** attempt
+        if response is not None:
+            retry_after = response.headers.get("retry-after")
+            if retry_after:
+                try:
+                    seconds = float(retry_after)
+                except ValueError:
+                    try:
+                        seconds = (parsedate_to_datetime(retry_after) -
+                                   datetime.now(timezone.utc)).total_seconds()
+                    except (ValueError, TypeError, OverflowError):
+                        seconds = 0
+                delay = min(30, max(delay, seconds))
+        time.sleep(delay)
+    raise RuntimeError("Artifact storage retries exhausted")
+
 
 
 def remote_read(kind,key):
