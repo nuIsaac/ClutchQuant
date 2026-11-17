@@ -32,7 +32,7 @@ jobs:
           DB_POOL_SIZE: '2'
           DB_MAX_OVERFLOW: '0'
           ARTIFACT_BACKEND: supabase
-          ARTIFACT_ROOT: ${{ runner.temp }}/clutchquant-artifacts
+          ARTIFACT_ROOT: ${{ runner.temp }}/twelve-twelve-artifacts
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_ARTIFACT_BUCKET: clutchquant-artifacts

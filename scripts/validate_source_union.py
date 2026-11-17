@@ -26,7 +26,7 @@ from app.research.dataset import export_dataset
 
 url = os.environ["TEST_DATABASE_URL"]
 engine = create_engine(url)
-schema = "clutchquant_validation_" + uuid4().hex
+schema = "twelve_twelve_validation_" + uuid4().hex
 with engine.begin() as c:
     c.execute(CreateSchema(schema))
 try:

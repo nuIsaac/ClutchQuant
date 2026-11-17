@@ -9,16 +9,16 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_USER: clutchquant
+          POSTGRES_USER: twelve_twelve
           POSTGRES_PASSWORD: ci_only
-          POSTGRES_DB: clutchquant_test
+          POSTGRES_DB: twelve_twelve_test
         ports: ["5432:5432"]
-        options: --health-cmd "pg_isready -U clutchquant" --health-interval 5s --health-timeout 5s --health-retries 10
+        options: --health-cmd "pg_isready -U twelve_twelve" --health-interval 5s --health-timeout 5s --health-retries 10
     defaults:
       run:
         working-directory: apps/api
     env:
-      TEST_DATABASE_URL: postgresql+psycopg://clutchquant:ci_only@localhost:5432/clutchquant_test
+      TEST_DATABASE_URL: postgresql+psycopg://twelve_twelve:ci_only@localhost:5432/twelve_twelve_test
       OMP_NUM_THREADS: 1
     steps:
       - uses: actions/checkout@v4
@@ -51,12 +51,13 @@ jobs:
         app: [api, web]
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t clutchquant-${{ matrix.app }}:ci apps/${{ matrix.app }}
+      - run: docker build -t twelve-twelve-${{ matrix.app }}:ci apps/${{ matrix.app }}
   deployment:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: python3 -m pip install PyYAML==6.0.3
       - run: python3 deploy/check_demo_config.py
+      - run: python3 scripts/check_branding.py
       - run: for file in deploy/*.sh; do sh -n "$file"; done
       - run: python3 deploy/smoke.py

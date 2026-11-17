@@ -1,4 +1,4 @@
-# ClutchQuant engineering rules
+# 12:12 engineering rules
 
 - Preserve raw data, unknown identities, and historical forecast/model versions.
 - Elo v1 in `app/research/elo.py` is frozen (1500, K=32, scale=400).

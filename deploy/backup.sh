@@ -13,7 +13,7 @@ fi
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 destination="$1/$stamp"
 mkdir "$destination"
-sh deploy/compose.sh exec -T db pg_dump -U cq_owner -d clutchquant -Fc --no-owner --no-acl > "$destination/database.dump"
+sh deploy/compose.sh exec -T db sh -c 'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc --no-owner --no-acl' > "$destination/database.dump"
 sh deploy/compose.sh run --rm --no-deps --entrypoint tar worker -C /data/artifacts -cf - . > "$destination/artifacts.tar"
 sh deploy/compose.sh images > "$destination/images.txt"
 sh deploy/compose.sh run --rm --no-deps migrate python -m alembic current > "$destination/revision.txt"

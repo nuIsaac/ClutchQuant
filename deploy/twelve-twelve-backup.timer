@@ -1,7 +1,8 @@
 [Unit]
-Description=Daily ClutchQuant off-host backup
+Description=Daily 12:12 off-host backup
 
 [Timer]
+Unit=twelve-twelve-backup.service
 OnCalendar=*-*-* 04:00:00 UTC
 Persistent=true
 RandomizedDelaySec=300

@@ -18,7 +18,7 @@ class VlrSource:
         def received(response):
             if response.is_success and re.match(r"^/\d+", response.url.path):
                 self.metrics["fetched"] += 1
-        with httpx.Client(headers={"User-Agent": "ClutchQuant/1.0"}, timeout=15, follow_redirects=True,
+        with httpx.Client(headers={"User-Agent": "twelve-twelve/1.0"}, timeout=15, follow_redirects=True,
                           event_hooks={"response": [received]}) as client:
             for page in range(1, pages + 1):
                 soup = fetch_page(client, f"{VLR_BASE_URL}/matches/?page={page}", retries=2)

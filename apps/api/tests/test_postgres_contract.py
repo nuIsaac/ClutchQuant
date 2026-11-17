@@ -29,7 +29,7 @@ from app.models import Forecast, Match, MatchObservation, ModelRun, Player, Team
 
 API_ROOT = Path(__file__).resolve().parents[1]
 PREVIOUS_HEAD = "eaf7597a5438"
-SCHEMA_PATTERN = re.compile(r"clutchquant_test_[0-9a-f]{32}")
+SCHEMA_PATTERN = re.compile(r"twelve_twelve_test_[0-9a-f]{32}")
 CREATED_AT = datetime(2026, 1, 1, tzinfo=timezone.utc)
 LOCK_TIME = CREATED_AT + timedelta(hours=2)
 
@@ -55,7 +55,7 @@ def postgres_connection():
     if url.drivername == "postgresql":
         url = url.set(drivername="postgresql+psycopg")
 
-    schema = f"clutchquant_test_{uuid4().hex}"
+    schema = f"twelve_twelve_test_{uuid4().hex}"
     if not SCHEMA_PATTERN.fullmatch(schema):
         raise RuntimeError("Refusing an invalid test schema name")
 
