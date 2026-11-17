@@ -68,7 +68,7 @@ Local `.env.local` remains unchanged. Server-side API requests need no browser C
 Render: `DATABASE_URL` (API role/session pooler/SSL), `SUPABASE_URL`,
 `SUPABASE_SERVICE_ROLE_KEY`; blueprint supplies `APP_ENV=production`, `PORT=8000`,
 `DB_POOL_SIZE=2`, `DB_MAX_OVERFLOW=0`, `ARTIFACT_BACKEND=supabase`,
-`ARTIFACT_ROOT=/tmp/clutchquant-artifacts`, `ARTIFACT_READ_ONLY=true`,
+`ARTIFACT_ROOT=/tmp/twelve-twelve-artifacts`, `ARTIFACT_READ_ONLY=true`,
 `SUPABASE_ARTIFACT_BUCKET=clutchquant-artifacts`. Leave `HUMAN_FORECAST_TOKEN` unset
 so public users cannot submit human forecasts. Readiness checks database connectivity
 and migration head, not collection freshness or the Storage service.

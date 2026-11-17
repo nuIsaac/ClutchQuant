@@ -20,7 +20,7 @@ services:
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD}
     volumes:
       - ${DATA_DIR:?Set DATA_DIR}/postgres:/var/lib/postgresql/data
-      - ./deploy/init-db.sh:/docker-entrypoint-initdb.d/10-clutchquant.sh:ro
+      - ./deploy/init-db.sh:/docker-entrypoint-initdb.d/10-database.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cq_owner -d clutchquant"]
       interval: 10s
@@ -30,7 +30,7 @@ services:
     logging: *logging
     mem_limit: 1g
   migrate:
-    image: clutchquant-api:${RELEASE_TAG:?Set RELEASE_TAG}
+    image: twelve-twelve-api:${RELEASE_TAG:?Set RELEASE_TAG}
     build: ./apps/api
     profiles: [tools]
     environment:
@@ -42,7 +42,7 @@ services:
         condition: service_healthy
     logging: *logging
   api:
-    image: clutchquant-api:${RELEASE_TAG:?Set RELEASE_TAG}
+    image: twelve-twelve-api:${RELEASE_TAG:?Set RELEASE_TAG}
     build: ./apps/api
     # API has no published port; only trusted containers can supply proxy headers.
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
@@ -59,7 +59,7 @@ services:
     logging: *logging
     mem_limit: 768m
   web:
-    image: clutchquant-web:${RELEASE_TAG:?Set RELEASE_TAG}
+    image: twelve-twelve-web:${RELEASE_TAG:?Set RELEASE_TAG}
     build: ./apps/web
     environment:
       API_URL: http://api:8000/api/v1
@@ -78,7 +78,7 @@ services:
     logging: *logging
     mem_limit: 512m
   worker:
-    image: clutchquant-api:${RELEASE_TAG:?Set RELEASE_TAG}
+    image: twelve-twelve-api:${RELEASE_TAG:?Set RELEASE_TAG}
     build: ./apps/api
     command: ["python", "-u", "-m", "app.pipeline", "--interval-seconds", "${WORKER_INTERVAL_SECONDS:-300}", "--pages", "${WORKER_PAGES:-1}"]
     environment:

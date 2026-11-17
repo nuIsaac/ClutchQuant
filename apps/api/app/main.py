@@ -11,7 +11,7 @@ from app.routers import forecasts, matches, research, live, sources
 
 
 app = FastAPI(
-    title="ClutchQuant API",
+    title="12:12 API",
     version="0.1.0",
 )
 
@@ -27,7 +27,7 @@ app.include_router(sources.router)
 def health() -> dict[str, str]:
     return {
         "status": "ok",
-        "service": "clutchquant-api",
+        "service": "twelve-twelve-api",
         "version": "0.1.0",
     }
 

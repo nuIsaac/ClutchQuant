@@ -1,4 +1,4 @@
-# Operating ClutchQuant
+# Operating 12:12
 
 ## Public demo deployment
 
@@ -11,16 +11,14 @@ notes below describe the previous session, not a current dirty baseline.
 
 ## Prospective operation (current workflow)
 
-This session started the local Docker container `clutchquant-worker`, using the
-existing `apps/api/artifacts` directory and local database, with restart policy
-`unless-stopped`. It publishes no ports. Keep Docker Desktop and the host awake.
+Operate the configured worker by Compose service name; avoid depending on an old
+container label. For the production stack:
 
-```powershell
-docker logs --tail 50 clutchquant-worker
-docker inspect --format '{{.State.Status}} {{.State.Health.Status}}' clutchquant-worker
-docker exec clutchquant-worker python -m app.pipeline --health
-docker stop clutchquant-worker
-docker start clutchquant-worker
+```sh
+sh deploy/compose.sh logs --tail 50 worker
+sh deploy/compose.sh exec worker python -m app.pipeline --health
+sh deploy/compose.sh stop worker
+sh deploy/compose.sh start worker
 ```
 
 Stopping is intentional and prevents further collection; restarting resumes future
@@ -74,29 +72,6 @@ Collection window depth must cover outages and match volume: inspect gaps and ru
 a reviewed bounded catch-up (`--pages` up to 10) if needed. This is not a promise of
 complete coverage during downtime. RDS/S3/ECR/CloudWatch provisioning remains manual.
 
-## Git permission investigation and manual checkpoint
-
-No stale `.git/index.lock` was present. `.git` is owned by the user but contains
-explicit deny entries for sandbox identities; no ACL/security settings were changed.
-Run the following in your ordinary terminal outside the agent sandbox:
-
-```powershell
-Set-Location 'C:\Users\isaac\OneDrive\Desktop\CLUTCHQUANT'
-git status --short
-git diff --check
-git diff
-git ls-files --others --exclude-standard
-# Review untracked files too, then create a local checkpoint. No push is included.
-git add -- .
-git diff --cached --stat
-git diff --cached
-git commit -m "feat: add auditable prospective forecasting pipeline"
-```
-
-If the normal terminal is also denied, stop and inspect `Get-Acl .git` with the
-machine administrator; do not delete locks or reset ACLs without identifying the
-owner/cause. `.env.local`, Python environment files, and artifacts are gitignored;
-review the staged diff before committing.
 
 ## Local setup
 
@@ -114,7 +89,7 @@ python -m venv .venv
 .venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-The development fallback points to the existing local clutchquant database.
+The development fallback points to the existing local database (see rebrand-compatibility.md).
 Outside development, DATABASE_URL is mandatory. `.env.example` is a template;
 the Python application does not automatically load it. Inject environment variables
 through the shell or deployment service. Never commit credentials.

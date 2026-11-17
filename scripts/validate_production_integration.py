@@ -66,7 +66,7 @@ def config_for(connection):
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--report',required=True);parser.add_argument('--keep-schema',action='store_true');args=parser.parse_args()
-    url=os.environ['TEST_DATABASE_URL'];schema='clutchquant_live_validation_'+uuid4().hex
+    url=os.environ['TEST_DATABASE_URL'];schema='twelve_twelve_live_validation_'+uuid4().hex
     admin=create_engine(url);engine=None
     with admin.begin() as c:c.execute(CreateSchema(schema))
     try:

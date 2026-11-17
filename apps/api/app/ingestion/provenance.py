@@ -20,7 +20,7 @@ def captured_soup(response):
     }
     evidence["retrieval_sha256"] = write_json("retrievals", evidence)
     soup = BeautifulSoup(response.text, "html.parser")
-    soup.__dict__["cq_evidence"] = evidence
+    soup.__dict__["source_evidence"] = evidence
     return soup
 
 

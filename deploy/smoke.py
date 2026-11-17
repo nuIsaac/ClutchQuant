@@ -19,12 +19,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--skip-build", action="store_true")
     args = parser.parse_args()
-    project = "cqdeploytest" + uuid4().hex[:12]
+    project = "twelvedeploytest" + uuid4().hex[:12]
     env = dict(os.environ, COMPOSE_PROJECT_NAME=project, RELEASE_TAG="deployment-test",
                POSTGRES_PASSWORD=uuid4().hex, APP_DB_PASSWORD=uuid4().hex,
                CADDY_SITE="http://caddy", ACME_EMAIL="test@example.invalid",
                DATA_DIR="/unused-test-path")
-    with tempfile.TemporaryDirectory(prefix="cqdeploy-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="twelvedeploy-") as temporary:
         override = Path(temporary)/"override.yaml"
         override.write_text("""services:
   db:
@@ -32,7 +32,7 @@ def main():
       interval: 2s
     volumes: !override
       - testdb:/var/lib/postgresql/data
-      - ./deploy/init-db.sh:/docker-entrypoint-initdb.d/10-clutchquant.sh:ro
+      - ./deploy/init-db.sh:/docker-entrypoint-initdb.d/10-database.sh:ro
   api:
     volumes: !override [testartifacts:/data/artifacts:ro]
     healthcheck:
@@ -114,9 +114,9 @@ volumes:
                 "from app.artifacts import read_json; from sqlalchemy import select; "
                 "db=SessionLocal(); r=db.scalar(select(PipelineRun).where(PipelineRun.report_sha256.is_not(None))); "
                 "assert read_json('reports',r.report_sha256)['protocol']=='verified-prospective-v1'")
-            run("exec","-T","db","createdb","-U","cq_owner","cq_restore")
-            run("exec","-T","db","pg_restore","-U","cq_owner","-d","cq_restore","--no-owner","--no-acl","--exit-on-error",data=dump)
-            restored = run("exec","-T","db","psql","-U","cq_owner","-d","cq_restore","-Atc","SELECT count(*) FROM pipeline_runs").stdout.strip()
+            run("exec","-T","db","createdb","-U","cq_owner","twelve_restore")
+            run("exec","-T","db","pg_restore","-U","cq_owner","-d","twelve_restore","--no-owner","--no-acl","--exit-on-error",data=dump)
+            restored = run("exec","-T","db","psql","-U","cq_owner","-d","twelve_restore","-Atc","SELECT count(*) FROM pipeline_runs").stdout.strip()
             assert count == restored
             # Persisted DB and artifact volumes survive service recreation.
             run("up","-d","--force-recreate","--wait","db","api")

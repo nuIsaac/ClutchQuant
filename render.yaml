@@ -1,3 +1,4 @@
+# 12:12 API. Existing hosted service/bucket IDs are deliberate compatibility aliases.
 # Deploy only this free API. Database and scheduled jobs are external.
 services:
   - type: web
@@ -21,7 +22,7 @@ services:
       - key: ARTIFACT_BACKEND
         value: supabase
       - key: ARTIFACT_ROOT
-        value: /tmp/clutchquant-artifacts
+        value: /tmp/twelve-twelve-artifacts
       - key: ARTIFACT_READ_ONLY
         value: 'true'
       - key: SUPABASE_URL

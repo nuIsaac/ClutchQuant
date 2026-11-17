@@ -1,0 +1,11 @@
+[Unit]
+Description=12:12 paired database and artifact backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/twelve-twelve
+ExecStart=/bin/sh /opt/twelve-twelve/deploy/backup-offsite.sh spaces:REPLACE_BUCKET/twelve-twelve
+TimeoutStartSec=3600
+UMask=0077

@@ -141,7 +141,7 @@ budget. Unmount cancels requests; refreshes are serialized and run every minute.
 No new external ingestion occurs in this upcoming request path. The existing,
 separate live-score cache remains unchanged.
 
-- Loading: “ClutchQuant is loading match data…” with automatic retry copy.
+- Loading: “12:12 is loading match data…” with automatic retry copy.
 - Success: existing matches and forecast interface.
 - Empty: “No upcoming matches in this category.” only after successful decoding.
 - Exhausted recovery: “Couldn't load match data.” with Retry.
@@ -166,4 +166,4 @@ table make readiness fail. Render's wake-up behavior itself was not changed.
 Run backend tests with an isolated `TEST_DATABASE_URL`, plus `npm test`,
 `npm run lint`, `npm run typecheck` and `npm run build` in `apps/web`.
 
-Production integration now includes `/api/v1/data/health` and atomic RLS/runtime-role grants for new tables. See [the measured production integration report](production-integration-report.md).
+Production integration now includes `/api/v1/data/health` and atomic RLS/runtime-role grants for new tables. See [the measured production integration report](legacy/production-integration-report.md).

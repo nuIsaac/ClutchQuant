@@ -90,14 +90,14 @@ if your backup policy requires it. Never commit the real env/rclone config.
 2. **You provision** the VM, private backup bucket, SSH access and Cloud Firewall.
    Install Docker Engine/Compose from the official Ubuntu repository, enable Docker
    at boot, enable OS security updates and clock synchronization. Put the release
-   at `/opt/clutchquant`. This preparation does not execute those paid actions.
+   at `/opt/twelve-twelve`. This preparation does not execute those paid actions.
 3. Create persistent directories before startup:
 
    ```sh
    sudo mkdir -p /srv/clutchquant/postgres /srv/clutchquant/artifacts /srv/clutchquant/caddy
    sudo chown 10001:10001 /srv/clutchquant/artifacts
    sudo chmod 750 /srv/clutchquant/artifacts
-   cd /opt/clutchquant
+   cd /opt/twelve-twelve
    chmod 600 deploy/.env.production
    sh deploy/compose.sh config --quiet
    sh deploy/compose.sh up -d --wait db
@@ -182,9 +182,9 @@ references must be recovered as a pair. A backup on the same VM is not disaster 
 
 For daily off-host operation configure rclone's `spaces` remote for the selected
 private Spaces endpoint/bucket. Edit the service example's destination, copy it to
-`/etc/systemd/system/clutchquant-backup.service`, and install the timer alongside it.
+`/etc/systemd/system/twelve-twelve-backup.service`, and install the timer alongside it.
 Run the service manually and verify remote objects/restore before enabling
-`systemctl enable --now clutchquant-backup.timer`. Root's rclone config must be 600.
+`systemctl enable --now twelve-twelve-backup.timer`. Root's rclone config must be 600.
 The job stops the worker, backs up, copies/checks remote bytes, then resumes it.
 On failure it intentionally leaves the worker stopped; alert and investigate.
 No remote copy, timer installation or credential configuration was performed here.
@@ -231,3 +231,5 @@ The existing local worker was observed running healthy; the deployment drill use
 no-collection cycles in an isolated DB to test restart/permissions without duplicating
 live collection. A real target-host collection cycle, TLS/DNS, reboot and off-host
 restore remain explicit go-live gates. No modeling milestone was started.
+
+For rebrand upgrades, follow [compatibility and rollout](rebrand-compatibility.md) before changing paths, timers or resource names.

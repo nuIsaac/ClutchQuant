@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { matchesEvent, formatTime, percent } from "../src/lib/market.ts";
+import { matchesEvent, formatTime, percent } from "../src/lib/match-format.ts";
 test("filters use actual event labels", () => {
   assert.equal(
     matchesEvent({ event_name: "VCT 2026: Americas" }, "Americas"),

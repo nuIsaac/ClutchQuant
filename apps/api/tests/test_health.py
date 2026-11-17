@@ -12,7 +12,7 @@ def test_health_endpoint_returns_expected_response() -> None:
     assert response.status_code == 200
     assert response.json() == {
         "status": "ok",
-        "service": "clutchquant-api",
+        "service": "twelve-twelve-api",
         "version": "0.1.0",
     }
 

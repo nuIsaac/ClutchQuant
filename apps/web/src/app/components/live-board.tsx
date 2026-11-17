@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { decodeLive, type LiveResponse } from "@/lib/live";
-import { formatTime, percent } from "@/lib/market";
-import { ProbabilityBar, ModelBadge } from "./market-primitives";
+import { formatTime, percent } from "@/lib/match-format";
+import { ProbabilityBar, ModelBadge } from "./forecast-primitives";
 
 export default function LiveBoard() {
   const [data, setData] = useState<LiveResponse | null>(null);
@@ -64,10 +64,7 @@ export default function LiveBoard() {
         </span>
       </div>
       {failed || data?.source_status === "unavailable" ? (
-        <p
-          role="status"
-          className="live-message"
-        >
+        <p role="status" className="live-message">
           Live feed temporarily unavailable.
         </p>
       ) : !data ? (
@@ -80,7 +77,7 @@ export default function LiveBoard() {
         </p>
       ) : null}
       {data?.source_status === "partial" && (
-        <p className="mb-2 text-xs text-amber-300">
+        <p className="mb-2 text-xs text-[var(--warning)]">
           Some live states are unavailable. Coverage is limited to{" "}
           {data.coverage_limit} matches.
         </p>
@@ -89,7 +86,7 @@ export default function LiveBoard() {
         {data?.items.map((m) => (
           <article
             key={m.vlr_id}
-            className="rounded-lg border border-violet-500/20 bg-[#111722] p-4"
+            className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4"
           >
             <div className="mb-3 flex items-center gap-2">
               <ModelBadge current>
@@ -103,13 +100,13 @@ export default function LiveBoard() {
             </div>
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold">{m.team1_name}</h3>
-              <span className="font-mono text-2xl text-violet-300">
+              <span className="font-mono text-2xl text-[var(--accent)]">
                 {percent(m.team1_win_probability)}
               </span>
             </div>
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-sm font-semibold">{m.team2_name}</p>
-              <span className="font-mono text-2xl text-cyan-200">
+              <span className="font-mono text-2xl text-[var(--foreground)]">
                 {percent(
                   m.team1_win_probability === null
                     ? null
@@ -122,7 +119,9 @@ export default function LiveBoard() {
               Series {m.series_score.join("–")} · BO{m.best_of}
             </p>
             {m.reason && (
-              <p className="mt-2 text-[10px] text-amber-300">{m.reason}</p>
+              <p className="mt-2 text-[10px] text-[var(--warning)]">
+                {m.reason}
+              </p>
             )}
             <details className="mt-3 border-t border-slate-800 pt-2 text-xs text-slate-400">
               <summary className="cursor-pointer">View forecast</summary>
@@ -134,7 +133,8 @@ export default function LiveBoard() {
                   {m.team2_rating?.toFixed(0) ?? "Unavailable"}
                 </p>
                 <p>
-                  Rating difference: {m.team1_rating !== null && m.team2_rating !== null
+                  Rating difference:{" "}
+                  {m.team1_rating !== null && m.team2_rating !== null
                     ? (m.team1_rating - m.team2_rating).toFixed(0)
                     : "Unavailable"}
                 </p>
@@ -151,7 +151,7 @@ export default function LiveBoard() {
                   effects are not estimated.
                 </p>
                 <a
-                  className="inline-block text-violet-300 underline"
+                  className="inline-block text-[var(--accent)] underline"
                   href={`https://www.vlr.gg/${m.vlr_id}/`}
                   target="_blank"
                   rel="noreferrer"

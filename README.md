@@ -1,10 +1,14 @@
-# ClutchQuant
+# 12:12
+
+Pronounced **twelve to twelve** — competitive Valorant match intelligence.
+
+[Design system](docs/design-system.md) · [Rebrand deployment compatibility](docs/rebrand-compatibility.md)
 
 Valorant match probabilities, before and during play.
 
 **[View live demo →](https://clutch-quant.vercel.app)**
 
-ClutchQuant turns Valorant match history and game state into win probabilities.
+12:12 turns Valorant match history and game state into win probabilities.
 It shows pre-match Elo estimates and score-conditioned live estimates when VLR
 supplies a valid live state.
 
@@ -17,7 +21,7 @@ supplies a valid live state.
 ## Why I built it
 
 I've competed at a high level in Valorant, reached the top 25 on the NA leaderboard,
-led teams and spent a lot of time analyzing matches. ClutchQuant started as a way
+led teams and spent a lot of time analyzing matches. 12:12 started as a way
 to turn that experience into something measurable, while building the data pipeline
 and forecasting tools behind it.
 
@@ -124,4 +128,13 @@ forecasts and availability evidence are preserved. The frontend automatically
 recovers during backend cold starts and separates loading, empty and error states.
 See [configuration, reconciliation policy, dry runs and debugging](docs/multi-source.md).
 
-See the [engineering report and measured validation results](docs/implementation-report.md).
+See the [engineering report and measured validation results](docs/legacy/implementation-report.md).
+
+## Local database upgrade safety
+
+Before starting the renamed local Compose stack, inspect the existing PostgreSQL
+container's mount and export `POSTGRES_VOLUME` with its exact volume name. Stop
+the old container first. The volume is now required and external: Compose will
+refuse to start rather than silently create an empty database. For a genuinely new
+installation, explicitly create a new named Docker volume and set POSTGRES_VOLUME.
+See [the rollout checklist](docs/rebrand-compatibility.md) for backup and rollback.

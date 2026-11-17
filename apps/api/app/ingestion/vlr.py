@@ -108,7 +108,7 @@ def parse_completed_match(client, match_card):
         client,
         match_url,
     )
-    evidence = match_soup.__dict__.get("cq_evidence")
+    evidence = match_soup.__dict__.get("source_evidence")
     try:
         data = parse_match_soup(match_soup, vlr_id, event_name, stage)
     except Exception as error:
@@ -118,7 +118,7 @@ def parse_completed_match(client, match_card):
     # Event/stage came from the listing, so preserve that separate source too.
     parent = match_card
     while parent is not None:
-        listing = parent.__dict__.get("cq_evidence")
+        listing = parent.__dict__.get("source_evidence")
         if listing:
             data["listing_evidence"] = listing
             break
@@ -211,7 +211,7 @@ def parse_match_soup(match_soup, vlr_id, event_name, stage):
         "stage": stage,
         "status": "completed",
         "scheduled_at": scheduled_at,
-        "evidence": match_soup.__dict__.get("cq_evidence"),
+        "evidence": match_soup.__dict__.get("source_evidence"),
     }
 
 

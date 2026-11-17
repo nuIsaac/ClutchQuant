@@ -1,7 +1,9 @@
+# 12:12 local database. Legacy SQL identities preserve existing data; see docs/rebrand-compatibility.md.
+name: twelve-twelve
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: clutchquant-postgres
+    container_name: twelve-twelve-postgres
     environment:
       POSTGRES_DB: clutchquant
       POSTGRES_USER: clutchquant
@@ -9,7 +11,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - clutchquant_postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U clutchquant -d clutchquant"]
       interval: 5s
@@ -17,4 +19,7 @@ services:
       retries: 10
 
 volumes:
-  clutchquant_postgres_data:
+  postgres_data:
+    external: true
+    # Existing physical volume. Override only after verifying the actual volume name.
+    name: ${POSTGRES_VOLUME:?Set POSTGRES_VOLUME to the verified existing database volume}
